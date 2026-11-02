@@ -341,6 +341,18 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }, full())
 
+        page.addView(label("WHEN YOU ARRIVE HOME"))
+        page.addView(TextView(this).apply {
+            text = "Choose what your phone should do automatically after entering the home area."
+            textSize = 12f
+            setTextColor(0xFF737B74.toInt())
+        }, full())
+        val arrivalModeSpinner = spinner(
+            listOf("🔕 Silent", "📳 Vibrate", "🌙 Do Not Disturb"),
+            listOf("silent", "vibrate", "dnd").indexOf(prefs.getString("arrival_mode", "silent")).coerceAtLeast(0)
+        )
+        page.addView(arrivalModeSpinner, full())
+
         page.addView(label("VOICE REMINDER"))
         nameField = EditText(this).apply {
             hint = "Your name"
@@ -397,6 +409,7 @@ class MainActivity : ComponentActivity() {
         page.addView(radiusSpinner, full())
         page.addView(actionButton("SAVE SETTINGS") {
             saveSettings()
+            prefs.edit().putString("arrival_mode", listOf("silent", "vibrate", "dnd")[arrivalModeSpinner.selectedItemPosition]).apply()
             Toast.makeText(this, "Settings saved.", Toast.LENGTH_SHORT).show()
             buildSettingsScreen()
         }, full().apply { topMargin = dp(22) })
