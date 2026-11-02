@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation"/>
     <application
         android:allowBackup="true"
         android:label="Shanti Jeewan"
@@ -17,6 +20,12 @@
             </intent-filter>
         </activity>
         <receiver android:name=".HomeGeofenceReceiver" android:exported="false"/>
+        <receiver android:name=".HomeWifiReceiver" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.wifi.STATE_CHANGE"/>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+            </intent-filter>
+        </receiver>
         <service
             android:name=".ShantiQuickTileService"
             android:label="Shanti Jeewan"
@@ -28,9 +37,7 @@
             </intent-filter>
         </service>
         <receiver android:name=".LocationModeReceiver" android:enabled="true" android:exported="true">
-            <intent-filter>
-                <action android:name="android.location.MODE_CHANGED"/>
-            </intent-filter>
+            <intent-filter><action android:name="android.location.MODE_CHANGED"/></intent-filter>
         </receiver>
     </application>
 </manifest>
