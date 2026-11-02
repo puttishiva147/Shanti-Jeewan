@@ -229,6 +229,40 @@ class MainActivity : ComponentActivity() {
             if (hasForegroundLocation()) saveCurrentLocation()
             else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }, full())
+
+        page.addView(label("CUSTOM HOME LOCATION"))
+        page.addView(TextView(this).apply {
+            text = "Set a different home point manually using GPS coordinates. This works even when you are not physically at that location."
+            textSize = 12f
+            setTextColor(0xFF737B74.toInt())
+            setPadding(0, 0, 0, dp(8))
+        }, full())
+        val customLatitude = EditText(this).apply {
+            hint = "Latitude (e.g. 19.1550)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL or android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
+            setSingleLine(true)
+            setText(prefs.getString("lat", ""))
+        }
+        page.addView(customLatitude, full())
+        val customLongitude = EditText(this).apply {
+            hint = "Longitude (e.g. 72.8490)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL or android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
+            setSingleLine(true)
+            setText(prefs.getString("lng", ""))
+        }
+        page.addView(customLongitude, full())
+        page.addView(actionButton("SAVE CUSTOM HOME LOCATION") {
+            val latitude = customLatitude.text.toString().trim().toDoubleOrNull()
+            val longitude = customLongitude.text.toString().trim().toDoubleOrNull()
+            if (latitude == null || longitude == null || latitude !in -90.0..90.0 || longitude !in -180.0..180.0) {
+                Toast.makeText(this, "Enter valid latitude and longitude.", Toast.LENGTH_LONG).show()
+            } else {
+                prefs.edit().putString("lat", latitude.toString()).putString("lng", longitude.toString()).apply()
+                Toast.makeText(this, "Custom home location saved.", Toast.LENGTH_LONG).show()
+                buildSettingsScreen()
+            }
+        }, full())
+
         page.addView(TextView(this).apply {
             val allowed = Build.VERSION.SDK_INT < 29 ||
                 ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
