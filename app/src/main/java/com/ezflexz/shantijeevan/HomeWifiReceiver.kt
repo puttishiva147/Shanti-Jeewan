@@ -20,11 +20,9 @@ class HomeWifiReceiver : BroadcastReceiver() {
             intent.action != "android.net.conn.CONNECTIVITY_CHANGE") return
         val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("active", false) || !prefs.getBoolean("wifi_fallback_enabled", false)) return
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
-        if (locationManager.isLocationEnabled) return
         val networkInfo = intent.getParcelableExtra<android.net.NetworkInfo>(WifiManager.EXTRA_NETWORK_INFO)
         if (networkInfo != null && !networkInfo.isConnected) {
-            if (prefs.getBoolean("inside_home", false)) leaveHome(context)
+            if (prefs.getBoolean("inside_home_wifi", false)) leaveHome(context)
             return
         }
         evaluate(context)
@@ -95,9 +93,9 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 return
             }
             if (savedFingerprint == null && homeSsid == null) return
-            val inside = prefs.getBoolean("inside_home", false)
-            if (connectedHome && !inside) enterHome(context)
-            else if (!connectedHome && inside) leaveHome(context)
+            val insideWifi = prefs.getBoolean("inside_home_wifi", false)
+            if (connectedHome && !insideWifi) enterHome(context)
+            else if (!connectedHome && insideWifi) leaveHome(context)
         }
 
         private fun enterHome(context: Context) {
@@ -108,6 +106,7 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 .putInt("previous_mode", audio.ringerMode)
                 .putInt("previous_filter", policy.currentInterruptionFilter)
                 .putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING))
+                .putBoolean("inside_home_wifi", true)
                 .putBoolean("inside_home", true)
                 .putString("last_event", "Home Wi-Fi detected — arrival")
                 .putLong("last_event_time", System.currentTimeMillis())
@@ -144,7 +143,8 @@ class HomeWifiReceiver : BroadcastReceiver() {
         private fun leaveHome(context: Context) {
             val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
             restorePreviousMode(context)
-            prefs.edit().putBoolean("inside_home", false)
+            prefs.edit().putBoolean("inside_home_wifi", false)
+                .putBoolean("inside_home", prefs.getBoolean("inside_home_gps", false))
                 .putString("last_event", "Home Wi-Fi disconnected — previous phone mode restored")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
             androidx.work.WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
