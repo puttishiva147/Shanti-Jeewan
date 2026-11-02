@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var messageField: EditText
     private lateinit var intervalSpinner: Spinner
     private lateinit var radiusSpinner: Spinner
+    private lateinit var voiceVolumeSeek: SeekBar
     private var settingsScreen = false
 
     private val locationPermission = registerForActivityResult(
@@ -323,7 +324,7 @@ class MainActivity : ComponentActivity() {
             setTextColor(0xFF626B63.toInt())
         }
         page.addView(volumeLabel, full())
-        val volumeSeek = SeekBar(this).apply {
+        voiceVolumeSeek = SeekBar(this).apply {
             max = 100
             progress = prefs.getInt("voice_volume", 45)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -334,10 +335,10 @@ class MainActivity : ComponentActivity() {
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {}
             })
         }
-        page.addView(volumeSeek, full())
+        page.addView(voiceVolumeSeek, full())
         page.addView(actionButton("TEST VOICE REMINDER") {
             saveSettings()
-            prefs.edit().putInt("voice_volume", volumeSeek.progress).apply()
+            prefs.edit().putInt("voice_volume", voiceVolumeSeek.progress).apply()
             val spoken = nameField.text.toString().ifBlank { "User" } + ", " +
                 messageField.text.toString().ifBlank { "Aapka phone Silent Mode mein hai." }
             thread { ReminderWorker.speak(this, spoken) }
@@ -412,6 +413,7 @@ class MainActivity : ComponentActivity() {
             .putString("message", messageField.text.toString().trim().ifBlank { "Aapka phone Silent Mode mein hai." })
             .putInt("interval", minutes)
             .putInt("radius", metres)
+            .putInt("voice_volume", if (::voiceVolumeSeek.isInitialized) voiceVolumeSeek.progress else prefs.getInt("voice_volume", 45))
             .apply()
     }
     private fun hasForegroundLocation() =
