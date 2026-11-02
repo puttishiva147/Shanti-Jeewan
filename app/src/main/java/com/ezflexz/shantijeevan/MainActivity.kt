@@ -348,8 +348,8 @@ class MainActivity : ComponentActivity() {
             setTextColor(0xFF737B74.toInt())
         }, full())
         val arrivalModeSpinner = spinner(
-            listOf("🔕 Silent", "📳 Vibrate", "🌙 Do Not Disturb"),
-            listOf("silent", "vibrate", "dnd").indexOf(prefs.getString("arrival_mode", "silent")).coerceAtLeast(0)
+            listOf("🔕 Silent", "📳 Vibrate", "🔉 Low sound (25%)"),
+            listOf("silent", "vibrate", "low_sound").indexOf(prefs.getString("arrival_mode", "silent")).let { if (it < 0) 0 else it }
         )
         page.addView(arrivalModeSpinner, full())
 
@@ -415,7 +415,7 @@ class MainActivity : ComponentActivity() {
         page.addView(radiusSpinner, full())
         page.addView(actionButton("SAVE SETTINGS") {
             saveSettings()
-            prefs.edit().putString("arrival_mode", listOf("silent", "vibrate", "dnd")[arrivalModeSpinner.selectedItemPosition]).apply()
+            prefs.edit().putString("arrival_mode", listOf("silent", "vibrate", "low_sound")[arrivalModeSpinner.selectedItemPosition]).apply()
             Toast.makeText(this, "Settings saved.", Toast.LENGTH_SHORT).show()
             buildSettingsScreen()
         }, full().apply { topMargin = dp(22) })
