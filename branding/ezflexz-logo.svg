@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420">
+<rect width="1200" height="420" rx="28" fill="#fff"/>
+<circle cx="600" cy="210" r="188" fill="#050811" stroke="#9BA4B6" stroke-width="9"/>
+<path d="M780 67A188 188 0 0 1 788 355" fill="none" stroke="#246BFE" stroke-width="8"/>
+<text x="570" y="238" text-anchor="middle" font-family="Arial,sans-serif" font-size="72" letter-spacing="18" fill="#F8FAFF">EZFLEXZ</text>
+<circle cx="790" cy="210" r="21" fill="#246BFE"/>
+</svg>
