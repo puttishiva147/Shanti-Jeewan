@@ -17,5 +17,10 @@
             </intent-filter>
         </activity>
         <receiver android:name=".HomeGeofenceReceiver" android:exported="false"/>
+        <receiver android:name=".LocationModeReceiver" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="android.location.MODE_CHANGED"/>
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
