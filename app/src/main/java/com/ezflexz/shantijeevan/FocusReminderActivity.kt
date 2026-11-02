@@ -2,11 +2,12 @@ package com.ezflexz.shantijeevan
 
 import android.app.AlertDialog
 import android.app.TimePickerDialog
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.*
+import android.widget.*\nimport android.view.View
 import androidx.activity.ComponentActivity
 import kotlin.concurrent.thread
 
@@ -16,95 +17,182 @@ class FocusReminderActivity : ComponentActivity() {
     private var startMinute = 900
     private var endMinute = 1020
     private lateinit var appButton: Button
+    private lateinit var accessStatus: TextView
+
+    private val ink = 0xFF202522.toInt()
+    private val muted = 0xFF707970.toInt()
+    private val paper = 0xFFF5F6F3.toInt()
+    private val cardColor = 0xFFFFFFFF.toInt()
+    private val accent = 0xFF34483B.toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        try {
-            selectedPackages.addAll(prefs.getStringSet("packages", emptySet()) ?: emptySet())
-            startMinute = prefs.getInt("start_minute", 900).coerceIn(0, 1439)
-            endMinute = prefs.getInt("end_minute", 1020).coerceIn(0, 1439)
-            render()
-        } catch (t: Throwable) { safeError(t) }
+        selectedPackages.addAll(prefs.getStringSet("packages", emptySet()) ?: emptySet())
+        startMinute = prefs.getInt("start_minute", 900).coerceIn(0, 1439)
+        endMinute = prefs.getInt("end_minute", 1020).coerceIn(0, 1439)
+        render()
     }
+
+    override fun onResume() { super.onResume(); if (::accessStatus.isInitialized) updatePermissionStatus() }
 
     private fun render() {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 22, 24, 28)
-            setBackgroundColor(0xFFF8F8F6.toInt())
+            setPadding(dp(20), dp(16), dp(20), dp(30))
+            setBackgroundColor(paper)
         }
-        page.addView(Button(this).apply { text = "‹ BACK"; setOnClickListener { finish() } })
         page.addView(TextView(this).apply {
-            text = "Focus & Rest Reminder • BETA"
-            textSize = 22f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF202522.toInt())
-            setPadding(0, 18, 0, 8)
+            text = "‹  BACK"; textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ink); setPadding(0, dp(8), 0, dp(18))
+            setOnClickListener { finish() }
         })
         page.addView(TextView(this).apply {
-            text = "Choose apps and a daily time window. Opening a selected app starts a 45-minute focus session."
-            textSize = 14f
-            setTextColor(0xFF626B63.toInt())
+            text = "Focus & Rest"; textSize = 28f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ink)
         })
-        page.addView(Switch(this).apply {
-            text = "Enable Focus Reminder"
-            isChecked = prefs.getBoolean("enabled", false)
-            setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean("enabled", checked).apply() }
+        page.addView(TextView(this).apply {
+            text = "Build healthier screen-time habits with gentle reminders."
+            textSize = 14f; setTextColor(muted); setPadding(0, dp(6), 0, dp(18))
         })
-        page.addView(Switch(this).apply {
-            text = "Popup + voice check-in every 45 minutes"
-            isChecked = prefs.getBoolean("periodic_checkin_enabled", false)
+
+        val main = card()
+        main.addView(sectionTitle("FOCUS CONTROL"))
+        main.addView(label("Start a 45-minute focus session when you open a selected app."))
+        main.addView(toggleRow("Focus reminders", "Enable app-based focus sessions", "enabled"))
+        main.addView(divider())
+        main.addView(toggleRow("45-minute check-ins", "Popup with a spoken reminder", "periodic_checkin_enabled"))
+        page.addView(main)
+
+        val schedule = card()
+        schedule.addView(sectionTitle("DAILY SCHEDULE"))
+        schedule.addView(label("Choose when app-based focus sessions can begin."))
+        val times = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        times.addView(timeButton("START", startMinute, true), LinearLayout.LayoutParams(0, dp(58), 1f).apply { marginEnd = dp(8) })
+        times.addView(timeButton("END", endMinute, false), LinearLayout.LayoutParams(0, dp(58), 1f).apply { marginStart = dp(8) })
+        schedule.addView(times)
+        page.addView(schedule)
+
+        val apps = card()
+        apps.addView(sectionTitle("APPS TO FOCUS ON"))
+        apps.addView(label("Select the apps where you want focus reminders."))
+        appButton = Button(this).apply {
+            isAllCaps = false; textSize = 14f
+            setTextColor(accent); text = appButtonText()
+            setOnClickListener { loadAppPicker() }
+        }
+        apps.addView(appButton, LinearLayout.LayoutParams(-1, dp(48)))
+        page.addView(apps)
+
+        val reminder = card()
+        reminder.addView(sectionTitle("VOICE REMINDER"))
+        reminder.addView(label("This message appears in the popup and is spoken aloud."))
+        val message = EditText(this).apply {
+            setText(prefs.getString("message", "Take a break. Return to what matters."))
+            hint = "Write your reminder"
+            textSize = 14f; setTextColor(ink); setHintTextColor(muted)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setBackgroundColor(0xFFF2F4F0.toInt())
+            minLines = 2; maxLines = 4
+        }
+        reminder.addView(message)
+        val save = Button(this).apply {
+            text = "Save message"; isAllCaps = false; setTextColor(accent)
+            setOnClickListener {
+                prefs.edit().putString("message", message.text.toString().trim().ifBlank { "Take a break. Return to what matters." }).apply()
+                Toast.makeText(this@FocusReminderActivity, "Reminder saved", Toast.LENGTH_SHORT).show()
+            }
+        }
+        reminder.addView(save)
+        page.addView(reminder)
+
+        val permissions = card()
+        permissions.addView(sectionTitle("REQUIRED ACCESS"))
+        permissions.addView(label("Allow Shanti Jeewan to detect selected apps and show the focus popup."))
+        accessStatus = TextView(this).apply { textSize = 13f; setPadding(0, dp(8), 0, dp(8)) }
+        permissions.addView(accessStatus)
+        permissions.addView(permissionButton("Enable Accessibility", Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        permissions.addView(permissionButton("Allow sound & ringer control", Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        page.addView(permissions)
+
+        page.addView(TextView(this).apply {
+            text = "At each popup you can choose Mode ON or Mode OFF. Choosing OFF from the popup or Quick Settings restores Normal mode and full ringtone volume. Manual OFF stays in effect until you turn focus mode ON again."
+            textSize = 12f; setTextColor(muted); setPadding(dp(4), dp(12), dp(4), 0)
+        })
+        setContentView(ScrollView(this).apply { isFillViewport = true; addView(page) })
+        updatePermissionStatus()
+    }
+
+    private fun card() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(16), dp(16), dp(16), dp(14))
+        setBackgroundColor(cardColor)
+        val lp = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
+        layoutParams = lp
+    }
+
+    private fun sectionTitle(value: String) = TextView(this).apply {
+        text = value; textSize = 11f; letterSpacing = .08f
+        typeface = Typeface.DEFAULT_BOLD; setTextColor(muted)
+        setPadding(0, 0, 0, dp(8))
+    }
+
+    private fun label(value: String) = TextView(this).apply {
+        text = value; textSize = 13f; setTextColor(muted)
+        setPadding(0, 0, 0, dp(12))
+    }
+
+    private fun divider() = View(this).apply {
+        setBackgroundColor(0xFFE9ECE7.toInt())
+        layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(6); bottomMargin = dp(8) }
+    }
+
+    private fun toggleRow(title: String, subtitle: String, key: String) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
+        val texts = LinearLayout(this@FocusReminderActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(TextView(this@FocusReminderActivity).apply { text = title; textSize = 15f; typeface = Typeface.DEFAULT_BOLD; setTextColor(ink) })
+            addView(TextView(this@FocusReminderActivity).apply { text = subtitle; textSize = 12f; setTextColor(muted); setPadding(0, dp(3), 0, 0) })
+        }
+        addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+        addView(Switch(this@FocusReminderActivity).apply {
+            isChecked = prefs.getBoolean(key, false)
             setOnCheckedChangeListener { _, checked ->
-                val edit = prefs.edit().putBoolean("periodic_checkin_enabled", checked)
-                if (checked) edit.putLong("next_checkin_at", System.currentTimeMillis() + 45L * 60L * 1000L)
-                else edit.remove("next_checkin_at")
+                val edit = prefs.edit().putBoolean(key, checked)
+                if (key == "periodic_checkin_enabled") {
+                    if (checked) edit.putLong("next_checkin_at", System.currentTimeMillis() + 45L * 60L * 1000L)
+                    else edit.remove("next_checkin_at")
+                }
+                if (key == "enabled" && !checked) {
+                    edit.remove("session_until").remove("break_until")
+                }
                 edit.apply()
             }
         })
-        page.addView(Button(this).apply {
-            text = "START TIME • ${time(startMinute)}"
-            setOnClickListener { pickTime(true) }
-        })
-        page.addView(Button(this).apply {
-            text = "END TIME • ${time(endMinute)}"
-            setOnClickListener { pickTime(false) }
-        })
-        page.addView(TextView(this).apply {
-            text = "SELECT APPS"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF737B74.toInt()); setPadding(0, 18, 0, 8)
-        })
-        appButton = Button(this).apply { setOnClickListener { loadAppPicker() } }
-        updateAppButton()
-        page.addView(appButton)
-        page.addView(TextView(this).apply {
-            text = "REMINDER MESSAGE"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF737B74.toInt()); setPadding(0, 16, 0, 6)
-        })
-        val message = EditText(this).apply {
-            hint = "Take a break and return to your priorities."
-            setText(prefs.getString("message", "Take a break. Return to what matters."))
-        }
-        page.addView(message)
-        page.addView(Button(this).apply {
-            text = "SAVE MESSAGE"
-            setOnClickListener {
-                prefs.edit().putString("message", message.text.toString()).apply()
-                Toast.makeText(this@FocusReminderActivity, "Message saved", Toast.LENGTH_SHORT).show()
-            }
-        })
-        page.addView(Button(this).apply {
-            text = "ENABLE ACCESSIBILITY BLOCKER"
-            setOnClickListener {
-                try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-                catch (_: Throwable) { Toast.makeText(this@FocusReminderActivity, "Could not open Accessibility settings.", Toast.LENGTH_LONG).show() }
-            }
-        })
-        page.addView(TextView(this).apply {
-            text = "Every 45-minute check-in includes a voice reminder and Mode ON / Mode OFF controls. OFF from the popup or Quick Settings forces Normal ringer mode and 100% ringtone volume. Android requires the Accessibility service to be enabled for timed popups."
-            textSize = 12f; setTextColor(0xFF626B63.toInt()); setPadding(0, 12, 0, 0)
-        })
-        setContentView(ScrollView(this).apply { isFillViewport = true; addView(page) })
     }
+
+    private fun timeButton(caption: String, value: Int, isStart: Boolean) = Button(this).apply {
+        isAllCaps = false; textSize = 13f; setTextColor(accent)
+        text = "$caption   ${time(value)}"
+        setOnClickListener { pickTime(isStart) }
+    }
+
+    private fun permissionButton(title: String, action: String) = Button(this).apply {
+        text = title; isAllCaps = false; textSize = 13f; setTextColor(accent)
+        setOnClickListener {
+            try { startActivity(Intent(action)) }
+            catch (_: Throwable) { Toast.makeText(this@FocusReminderActivity, "Setting unavailable on this device", Toast.LENGTH_SHORT).show() }
+        }
+    }
+
+    private fun updatePermissionStatus() {
+        val component = ComponentName(this, FocusAppMonitorService::class.java)
+        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            ?.split(':')?.any { it.equals(component.flattenToString(), true) } == true
+        accessStatus.text = if (enabled) "✓ Accessibility is enabled" else "• Accessibility is not enabled"
+        accessStatus.setTextColor(if (enabled) accent else 0xFF9A6333.toInt())
+    }
+
+    private fun appButtonText() = "Choose apps  ·  ${selectedPackages.size} selected"
 
     private fun loadAppPicker() {
         Toast.makeText(this, "Loading apps…", Toast.LENGTH_SHORT).show()
@@ -117,25 +205,21 @@ class FocusReminderActivity : ComponentActivity() {
             } catch (_: Throwable) { emptyList<android.content.pm.ResolveInfo>() }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                if (apps.isEmpty()) { Toast.makeText(this, "No launchable apps found.", Toast.LENGTH_LONG).show(); return@runOnUiThread }
-                try {
-                    val pkgs = apps.map { it.activityInfo.packageName }
-                    val labels = apps.map { it.loadLabel(packageManager)?.toString() ?: it.activityInfo.packageName }.toTypedArray()
-                    val checked = BooleanArray(pkgs.size) { selectedPackages.contains(pkgs[it]) }
-                    AlertDialog.Builder(this).setTitle("Choose apps")
-                        .setMultiChoiceItems(labels, checked) { _, which, yes ->
-                            if (yes) selectedPackages.add(pkgs[which]) else selectedPackages.remove(pkgs[which])
-                        }
-                        .setPositiveButton("SAVE") { _, _ ->
-                            prefs.edit().putStringSet("packages", selectedPackages.toSet()).apply()
-                            updateAppButton()
-                        }.setNegativeButton("CANCEL", null).show()
-                } catch (_: Throwable) { Toast.makeText(this, "App picker could not open.", Toast.LENGTH_LONG).show() }
+                if (apps.isEmpty()) { Toast.makeText(this, "No apps found", Toast.LENGTH_LONG).show(); return@runOnUiThread }
+                val pkgs = apps.map { it.activityInfo.packageName }
+                val labels = apps.map { it.loadLabel(packageManager)?.toString() ?: it.activityInfo.packageName }.toTypedArray()
+                val checked = BooleanArray(pkgs.size) { selectedPackages.contains(pkgs[it]) }
+                AlertDialog.Builder(this).setTitle("Choose apps")
+                    .setMultiChoiceItems(labels, checked) { _, which, yes ->
+                        if (yes) selectedPackages.add(pkgs[which]) else selectedPackages.remove(pkgs[which])
+                    }
+                    .setPositiveButton("Save") { _, _ ->
+                        prefs.edit().putStringSet("packages", selectedPackages.toSet()).apply()
+                        appButton.text = appButtonText()
+                    }.setNegativeButton("Cancel", null).show()
             }
         }
     }
-
-    private fun updateAppButton() { appButton.text = "CHOOSE APPS • ${selectedPackages.size} SELECTED" }
 
     private fun pickTime(start: Boolean) {
         val current = if (start) startMinute else endMinute
@@ -148,13 +232,5 @@ class FocusReminderActivity : ComponentActivity() {
     }
 
     private fun time(value: Int) = String.format("%02d:%02d", value / 60, value % 60)
-
-    private fun safeError(t: Throwable) {
-        try {
-            setContentView(TextView(this).apply {
-                text = "Focus page error: ${t.javaClass.simpleName}\n${t.localizedMessage ?: "Unknown"}\nTap to go back."
-                textSize = 16f; setPadding(28, 40, 28, 40); setOnClickListener { finish() }
-            })
-        } catch (_: Throwable) { finish() }
-    }
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }
