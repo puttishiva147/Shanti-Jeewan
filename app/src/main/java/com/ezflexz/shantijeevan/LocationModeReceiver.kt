@@ -18,9 +18,12 @@ class LocationModeReceiver : BroadcastReceiver() {
         if (!prefs.getBoolean("active", false)) return
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val policy = context.getSystemService(NotificationManager::class.java)
-        if (prefs.getBoolean("inside_home", false) && policy.isNotificationPolicyAccessGranted) {
-            audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
-            policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
+        if (prefs.getBoolean("inside_home", false)) {
+            audio.setStreamVolume(AudioManager.STREAM_RING, prefs.getInt("previous_ring_volume", audio.getStreamMaxVolume(AudioManager.STREAM_RING)), 0)
+            if (policy.isNotificationPolicyAccessGranted) {
+                audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
+                policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
+            }
         }
         prefs.edit().putBoolean("inside_home", false).putBoolean("active", false)
             .putString("last_event", "Location turned off — restored previous phone mode")
