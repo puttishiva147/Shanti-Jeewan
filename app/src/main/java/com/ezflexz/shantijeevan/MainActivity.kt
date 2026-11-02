@@ -5,6 +5,9 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.location.Geocoder
+import java.util.Locale
+import kotlin.concurrent.thread
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -219,12 +222,18 @@ class MainActivity : ComponentActivity() {
         }, full())
 
         page.addView(label("HOME LOCATION"))
-        page.addView(TextView(this).apply {
-            text = if (prefs.getString("lat", null) != null) "✓ Home location saved" else "Not set yet — stand at home and pick your current location."
+        val savedLocationInfo = TextView(this).apply {
             textSize = 13f
-            setTextColor(0xFF626B63.toInt())
-            setPadding(0, 0, 0, dp(8))
-        }, full())
+            setTextColor(0xFF354039.toInt())
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = GradientDrawable().apply {
+                setColor(0xFFFFFFFF.toInt())
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), 0xFFE4E9E4.toInt())
+            }
+        }
+        page.addView(savedLocationInfo, full())
+        updateSavedLocationInfo(savedLocationInfo)
         page.addView(actionButton(if (prefs.getString("lat", null) != null) "UPDATE HOME LOCATION" else "PICK CURRENT LOCATION AS HOME") {
             if (hasForegroundLocation()) saveCurrentLocation()
             else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
@@ -258,6 +267,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Enter valid latitude and longitude.", Toast.LENGTH_LONG).show()
             } else {
                 prefs.edit().putString("lat", latitude.toString()).putString("lng", longitude.toString()).apply()
+                resolveAndSaveAddress(latitude, longitude) { if (settingsScreen) buildSettingsScreen() }
                 Toast.makeText(this, "Custom home location saved.", Toast.LENGTH_LONG).show()
                 buildSettingsScreen()
             }
@@ -388,12 +398,51 @@ class MainActivity : ComponentActivity() {
                 if (location != null) {
                     prefs.edit().putString("lat", location.latitude.toString())
                         .putString("lng", location.longitude.toString()).apply()
-                    Toast.makeText(this, "Home location saved.", Toast.LENGTH_LONG).show()
+                    resolveAndSaveAddress(location.latitude, location.longitude) { if (settingsScreen) buildSettingsScreen() }
+                    Toast.makeText(this, "Home location coordinates saved.", Toast.LENGTH_LONG).show()
+                    if (settingsScreen) buildSettingsScreen()
                 } else {
                     Toast.makeText(this, "Location unavailable. Turn on GPS and try again.", Toast.LENGTH_LONG).show()
                 }
             }
     }
+    private fun updateSavedLocationInfo(view: TextView) {
+        val lat = prefs.getString("lat", null)
+        val lng = prefs.getString("lng", null)
+        val address = prefs.getString("home_address", null)
+        view.text = if (lat == null || lng == null) {
+            "No home location saved yet. Pick your current location or enter custom coordinates below."
+        } else {
+            "Location: " + (address ?: "Address lookup pending") + "\nLatitude: " + lat + "\nLongitude: " + lng
+        }
+    }
+
+    private fun resolveAndSaveAddress(latitude: Double, longitude: Double, onDone: () -> Unit = {}) {
+        thread {
+            var addressText: String? = null
+            try {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    Geocoder(this, Locale.getDefault()).getFromLocation(latitude, longitude, 1) { results ->
+                        addressText = results.firstOrNull()?.getAddressLine(0)
+                        runOnUiThread {
+                            if (!addressText.isNullOrBlank()) prefs.edit().putString("home_address", addressText).apply()
+                            onDone()
+                        }
+                    }
+                    return@thread
+                } else {
+                    @Suppress("DEPRECATION")
+                    val result = Geocoder(this, Locale.getDefault()).getFromLocation(latitude, longitude, 1)
+                    addressText = result?.firstOrNull()?.getAddressLine(0)
+                }
+            } catch (_: Exception) {}
+            runOnUiThread {
+                if (!addressText.isNullOrBlank()) prefs.edit().putString("home_address", addressText).apply()
+                onDone()
+            }
+        }
+    }
+
     private fun activateHomeAutomation() {
         val lat = prefs.getString("lat", null)?.toDoubleOrNull()
         val lng = prefs.getString("lng", null)?.toDoubleOrNull()
