@@ -7,7 +7,8 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.*\nimport android.view.View
+import android.widget.*
+import android.view.View
 import androidx.activity.ComponentActivity
 import kotlin.concurrent.thread
 
