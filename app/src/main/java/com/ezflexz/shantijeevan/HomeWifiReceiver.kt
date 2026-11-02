@@ -17,6 +17,7 @@ import androidx.core.app.NotificationManagerCompat
 class HomeWifiReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != WifiManager.NETWORK_STATE_CHANGED_ACTION &&
+            intent.action != WifiManager.WIFI_STATE_CHANGED_ACTION &&
             intent.action != "android.net.conn.CONNECTIVITY_CHANGE") return
         val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("active", false) || !prefs.getBoolean("wifi_fallback_enabled", false)) return
@@ -66,7 +67,7 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
             }
             if (!wifiConnected) {
-                if (prefs.getBoolean("inside_home", false)) leaveHome(context)
+                if (prefs.getBoolean("inside_home_wifi", false)) leaveHome(context)
                 else prefs.edit().putString("last_event", "Wi-Fi disconnected — waiting for home network")
                     .putLong("last_event_time", System.currentTimeMillis()).apply()
                 return
