@@ -123,8 +123,13 @@ class ReminderWorker(context: Context, params: WorkerParameters) : Worker(contex
         if (!prefs.getBoolean("active", false) || !prefs.getBoolean("inside_home", false)) return Result.success()
         val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val policy = appContext.getSystemService(NotificationManager::class.java)
-        if (policy.isNotificationPolicyAccessGranted && audio.ringerMode != AudioManager.RINGER_MODE_SILENT)
-            audio.ringerMode = AudioManager.RINGER_MODE_SILENT
+        if (policy.isNotificationPolicyAccessGranted) {
+            when (prefs.getString("arrival_mode", "silent")) {
+                "vibrate" -> audio.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+                "dnd" -> policy.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+                else -> audio.ringerMode = AudioManager.RINGER_MODE_SILENT
+            }
+        }
         speak(appContext, "${prefs.getString("name","User")}, ${prefs.getString("message","Aapka phone Silent Mode mein hai.")}")
         return Result.success()
     }
