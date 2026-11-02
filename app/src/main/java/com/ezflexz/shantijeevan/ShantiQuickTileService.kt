@@ -2,6 +2,7 @@ package com.ezflexz.shantijeevan
 
 import android.content.Intent
 import android.graphics.drawable.Icon
+import android.media.AudioManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.google.android.gms.location.LocationServices
@@ -20,18 +21,22 @@ class ShantiQuickTileService : TileService() {
         }
     }
 
-    override fun onStartListening() {
-        super.onStartListening()
-        refreshTile()
-    }
+    override fun onStartListening() { super.onStartListening(); refreshTile() }
 
     override fun onClick() {
         super.onClick()
         val prefs = getSharedPreferences("shanti", MODE_PRIVATE)
         if (prefs.getBoolean("active", false)) {
-            if (prefs.getBoolean("inside_home", false)) HomeWifiReceiver.restorePreviousMode(this)
+            val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+            try {
+                audio.setRingerMode(AudioManager.RINGER_MODE_NORMAL)
+                audio.setStreamVolume(AudioManager.STREAM_RING, audio.getStreamMaxVolume(AudioManager.STREAM_RING), 0)
+            } catch (_: SecurityException) {}
+            getSharedPreferences("focus_beta", MODE_PRIVATE).edit()
+                .putBoolean("manual_mode_off", true).putBoolean("focus_mode_on", false)
+                .remove("volume_saved").remove("previous_ring_volume").apply()
             prefs.edit().putBoolean("active", false).putBoolean("inside_home", false)
-                .putString("last_event", "Automation paused from Quick Settings — previous mode restored")
+                .putString("last_event", "Automation OFF from Quick Settings — Normal mode and full ringtone volume")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
             try {
                 LocationServices.getGeofencingClient(this).removeGeofences(

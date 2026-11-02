@@ -38,6 +38,7 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
                 }
                 prefs.edit().putString("last_event", "Arrived home")
                     .putLong("last_event_time", System.currentTimeMillis())
+                    .putBoolean("inside_home_gps", true)
                     .putBoolean("inside_home", true).apply()
 
                 val mode = prefs.getString("arrival_mode", "silent")
@@ -58,11 +59,16 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
             }
             Geofence.GEOFENCE_TRANSITION_EXIT -> {
                 val wasInside = prefs.getBoolean("inside_home", false)
+                val wifiStillInside = prefs.getBoolean("inside_home_wifi", false)
                 prefs.edit().putString("last_event", "Left home")
                     .putLong("last_event_time", System.currentTimeMillis())
-                    .putBoolean("inside_home", false).apply()
-                WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
-                if (wasInside) {
+                    .putBoolean("inside_home_gps", false)
+                    .putBoolean("inside_home", wifiStillInside).apply()
+                if (!wifiStillInside) {
+                    WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
+                    WorkManager.getInstance(context).cancelUniqueWork("home-reminder-first")
+                }
+                if (wasInside && !wifiStillInside) {
                     audio.setStreamVolume(AudioManager.STREAM_RING, prefs.getInt("previous_ring_volume", audio.getStreamMaxVolume(AudioManager.STREAM_RING)), 0)
                     if (policy.isNotificationPolicyAccessGranted) {
                         audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
