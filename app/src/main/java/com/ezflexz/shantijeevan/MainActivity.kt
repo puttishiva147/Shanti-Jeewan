@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
         nameField = EditText(this).apply {
             hint = "Shiva"
             setText(prefs.getString("name", "Shiva"))
-            singleLine = true
+            setSingleLine(true)
         }
         page.addView(nameField, full())
 
