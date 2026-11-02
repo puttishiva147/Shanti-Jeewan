@@ -102,6 +102,11 @@ class FocusBlockerActivity : Activity() {
     private fun applyFocusVolume() {
         val audio = getSystemService(AUDIO_SERVICE) as AudioManager
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_RING)
+        val prefs = getSharedPreferences("focus_beta", MODE_PRIVATE)
+        if (!prefs.getBoolean("volume_saved", false)) {
+            prefs.edit().putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING))
+                .putBoolean("volume_saved", true).apply()
+        }
         audio.setStreamVolume(AudioManager.STREAM_RING, (max * 0.30f).toInt().coerceAtLeast(1), 0)
     }
 
