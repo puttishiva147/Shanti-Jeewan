@@ -45,6 +45,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            activateHomeAutomation()
+        } else {
+            Toast.makeText(this, "Arrival confirmation notification is required. Allow notifications and turn ON again.", Toast.LENGTH_LONG).show()
+            if (::activeSwitch.isInitialized) activeSwitch.isChecked = false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildHomeScreen()
@@ -509,6 +520,12 @@ class MainActivity : ComponentActivity() {
             activeSwitch.isChecked = false
             startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             Toast.makeText(this, "Grant Silent Mode access, then turn ON again.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            activeSwitch.isChecked = false
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
         val fence = Geofence.Builder()
