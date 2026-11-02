@@ -42,7 +42,7 @@ class FocusReminderActivity : ComponentActivity() {
             setPadding(0, 18, 0, 8)
         })
         page.addView(TextView(this).apply {
-            text = "Choose apps and a daily time window. Opening a selected app during this window starts a 45-minute focus session."
+            text = "Choose apps and a daily time window. Opening a selected app starts a 45-minute focus session."
             textSize = 14f
             setTextColor(0xFF626B63.toInt())
         })
@@ -50,6 +50,16 @@ class FocusReminderActivity : ComponentActivity() {
             text = "Enable Focus Reminder"
             isChecked = prefs.getBoolean("enabled", false)
             setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean("enabled", checked).apply() }
+        })
+        page.addView(Switch(this).apply {
+            text = "Popup + voice check-in every 45 minutes"
+            isChecked = prefs.getBoolean("periodic_checkin_enabled", false)
+            setOnCheckedChangeListener { _, checked ->
+                val edit = prefs.edit().putBoolean("periodic_checkin_enabled", checked)
+                if (checked) edit.putLong("next_checkin_at", System.currentTimeMillis() + 45L * 60L * 1000L)
+                else edit.remove("next_checkin_at")
+                edit.apply()
+            }
         })
         page.addView(Button(this).apply {
             text = "START TIME • ${time(startMinute)}"
@@ -60,21 +70,15 @@ class FocusReminderActivity : ComponentActivity() {
             setOnClickListener { pickTime(false) }
         })
         page.addView(TextView(this).apply {
-            text = "SELECT APPS"
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF737B74.toInt())
-            setPadding(0, 18, 0, 8)
+            text = "SELECT APPS"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFF737B74.toInt()); setPadding(0, 18, 0, 8)
         })
         appButton = Button(this).apply { setOnClickListener { loadAppPicker() } }
         updateAppButton()
         page.addView(appButton)
         page.addView(TextView(this).apply {
-            text = "REMINDER MESSAGE"
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF737B74.toInt())
-            setPadding(0, 16, 0, 6)
+            text = "REMINDER MESSAGE"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFF737B74.toInt()); setPadding(0, 16, 0, 6)
         })
         val message = EditText(this).apply {
             hint = "Take a break and return to your priorities."
@@ -96,10 +100,8 @@ class FocusReminderActivity : ComponentActivity() {
             }
         })
         page.addView(TextView(this).apply {
-            text = "A 10-minute break is available. The reminder returns only if you are still using a selected app when the break ends. The session ends after 45 minutes. Ringtone volume is temporarily reduced to 30% and restored afterwards."
-            textSize = 12f
-            setTextColor(0xFF626B63.toInt())
-            setPadding(0, 12, 0, 0)
+            text = "Every 45-minute check-in includes a voice reminder and Mode ON / Mode OFF controls. OFF from the popup or Quick Settings forces Normal ringer mode and 100% ringtone volume. Android requires the Accessibility service to be enabled for timed popups."
+            textSize = 12f; setTextColor(0xFF626B63.toInt()); setPadding(0, 12, 0, 0)
         })
         setContentView(ScrollView(this).apply { isFillViewport = true; addView(page) })
     }
@@ -115,10 +117,7 @@ class FocusReminderActivity : ComponentActivity() {
             } catch (_: Throwable) { emptyList<android.content.pm.ResolveInfo>() }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                if (apps.isEmpty()) {
-                    Toast.makeText(this, "No launchable apps found.", Toast.LENGTH_LONG).show()
-                    return@runOnUiThread
-                }
+                if (apps.isEmpty()) { Toast.makeText(this, "No launchable apps found.", Toast.LENGTH_LONG).show(); return@runOnUiThread }
                 try {
                     val pkgs = apps.map { it.activityInfo.packageName }
                     val labels = apps.map { it.loadLabel(packageManager)?.toString() ?: it.activityInfo.packageName }.toTypedArray()
@@ -130,30 +129,20 @@ class FocusReminderActivity : ComponentActivity() {
                         .setPositiveButton("SAVE") { _, _ ->
                             prefs.edit().putStringSet("packages", selectedPackages.toSet()).apply()
                             updateAppButton()
-                        }
-                        .setNegativeButton("CANCEL", null).show()
-                } catch (_: Throwable) {
-                    Toast.makeText(this, "App picker could not open.", Toast.LENGTH_LONG).show()
-                }
+                        }.setNegativeButton("CANCEL", null).show()
+                } catch (_: Throwable) { Toast.makeText(this, "App picker could not open.", Toast.LENGTH_LONG).show() }
             }
         }
     }
 
-    private fun updateAppButton() {
-        appButton.text = "CHOOSE APPS • ${selectedPackages.size} SELECTED"
-    }
+    private fun updateAppButton() { appButton.text = "CHOOSE APPS • ${selectedPackages.size} SELECTED" }
 
     private fun pickTime(start: Boolean) {
         val current = if (start) startMinute else endMinute
         TimePickerDialog(this, { _, h, m ->
             val value = h * 60 + m
-            if (start) {
-                startMinute = value
-                prefs.edit().putInt("start_minute", value).apply()
-            } else {
-                endMinute = value
-                prefs.edit().putInt("end_minute", value).apply()
-            }
+            if (start) { startMinute = value; prefs.edit().putInt("start_minute", value).apply() }
+            else { endMinute = value; prefs.edit().putInt("end_minute", value).apply() }
             render()
         }, current / 60, current % 60, false).show()
     }
@@ -164,9 +153,7 @@ class FocusReminderActivity : ComponentActivity() {
         try {
             setContentView(TextView(this).apply {
                 text = "Focus page error: ${t.javaClass.simpleName}\n${t.localizedMessage ?: "Unknown"}\nTap to go back."
-                textSize = 16f
-                setPadding(28, 40, 28, 40)
-                setOnClickListener { finish() }
+                textSize = 16f; setPadding(28, 40, 28, 40); setOnClickListener { finish() }
             })
         } catch (_: Throwable) { finish() }
     }
