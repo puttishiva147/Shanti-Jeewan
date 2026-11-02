@@ -285,6 +285,21 @@ class MainActivity : ComponentActivity() {
             setPadding(0, dp(20), 0, dp(12))
         }, full())
 
+        page.addView(label("APP DISGUISE"))
+        page.addView(TextView(this).apply {
+            text = "Choose a different home-screen icon and app name. Your Shanti Jeewan features stay the same."
+            textSize = 13f
+            setTextColor(0xFF68716A.toInt())
+            setPadding(0, dp(4), 0, dp(10))
+        }, full())
+        page.addView(actionButton("CHOOSE APP ICON") { showAppDisguisePicker() }, full())
+        page.addView(TextView(this).apply {
+            text = "Launcher changes may take a few seconds. The installed app can still appear in Android Settings."
+            textSize = 11f
+            setTextColor(0xFF858B85.toInt())
+            setPadding(0, dp(7), 0, dp(16))
+        }, full())
+
         page.addView(label("HOME LOCATION"))
         val savedLocationInfo = TextView(this).apply {
             textSize = 13f
@@ -748,4 +763,38 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun showAppDisguisePicker() {
+        val options = arrayOf("Shanti Jeewan", "YouTube", "Instagram", "Facebook", "WhatsApp", "Chrome", "Gmail", "Calculator", "Calendar", "Maps", "Photos", "Music", "Clock", "Settings", "Files", "Contacts", "Notes", "Weather", "Telegram", "Snapchat", "Drive", "Browser")
+        val current = prefs.getInt("launcher_choice", 0)
+        AlertDialog.Builder(this)
+            .setTitle("Choose home-screen icon")
+            .setSingleChoiceItems(options, current) { dialog, which ->
+                applyLauncherChoice(which)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun applyLauncherChoice(choice: Int) {
+        val pm = packageManager
+        val flags = PackageManager.DONT_KILL_APP
+        try {
+            for (i in 0..21) {
+                val component = ComponentName(this, "com.ezflexz.shantijeevan.Launcher$i")
+                pm.setComponentEnabledSetting(
+                    component,
+                    if (i == choice) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    flags
+                )
+            }
+            prefs.edit().putInt("launcher_choice", choice).apply()
+            Toast.makeText(this, "Home-screen icon updated. If it doesn't refresh, reopen your launcher.", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not update launcher icon: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+
 }
