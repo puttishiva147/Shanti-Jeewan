@@ -23,12 +23,12 @@ class LocationModeReceiver : BroadcastReceiver() {
             try {
                 LocationServices.getGeofencingClient(context).removeGeofences(geofencePendingIntent(context))
             } catch (_: Exception) {}
-            if (prefs.getBoolean("inside_home", false)) HomeWifiReceiver.restorePreviousMode(context)
             HomeWifiReceiver.evaluate(context)
             prefs.edit().putString("last_event", "Location OFF — checking saved home Wi-Fi")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
         } else {
             registerGeofence(context, prefs)
+            HomeWifiReceiver.evaluate(context)
         }
     }
 
