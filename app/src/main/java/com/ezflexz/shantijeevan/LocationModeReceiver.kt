@@ -23,9 +23,13 @@ class LocationModeReceiver : BroadcastReceiver() {
             try {
                 LocationServices.getGeofencingClient(context).removeGeofences(geofencePendingIntent(context))
             } catch (_: Exception) {}
+            // GPS is no longer a valid presence signal after Location is disabled.
+            prefs.edit().putBoolean("inside_home_gps", false).apply()
             HomeWifiReceiver.evaluate(context)
-            prefs.edit().putString("last_event", "Location OFF — checking saved home Wi-Fi")
-                .putLong("last_event_time", System.currentTimeMillis()).apply()
+            if (!prefs.getBoolean("inside_home_wifi", false)) {
+                prefs.edit().putString("last_event", "Location OFF — Wi-Fi fallback active, waiting for saved home Wi-Fi")
+                    .putLong("last_event_time", System.currentTimeMillis()).apply()
+            }
         } else {
             registerGeofence(context, prefs)
             HomeWifiReceiver.evaluate(context)
