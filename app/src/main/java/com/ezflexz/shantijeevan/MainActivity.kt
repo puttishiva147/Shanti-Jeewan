@@ -606,16 +606,25 @@ class MainActivity : ComponentActivity() {
         val lat = prefs.getString("lat", null)?.toDoubleOrNull()
         val lng = prefs.getString("lng", null)?.toDoubleOrNull()
         if (lat == null || lng == null) {
-            Toast.makeText(this, "First set your home location in Settings.", Toast.LENGTH_LONG).show()
             activeSwitch.isChecked = false
+            Toast.makeText(this, "First set your home location in Settings.", Toast.LENGTH_LONG).show()
             return
         }
-        if (!hasForegroundLocation()) {
+        val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+        val locationOn = locationManager.isLocationEnabled
+        val wifiFallback = prefs.getBoolean("wifi_fallback_enabled", false) &&
+            !prefs.getString("home_wifi_ssid", null).isNullOrBlank()
+        if (!locationOn && !wifiFallback) {
+            activeSwitch.isChecked = false
+            Toast.makeText(this, "Location is OFF. Turn it ON or save your home Wi-Fi in Settings first.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (locationOn && !hasForegroundLocation()) {
             activeSwitch.isChecked = false
             locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
             return
         }
-        if (Build.VERSION.SDK_INT >= 29 &&
+        if (locationOn && Build.VERSION.SDK_INT >= 29 &&
             ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             activeSwitch.isChecked = false
             Toast.makeText(this, "Select Location permission > Allow all the time, then turn ON again.", Toast.LENGTH_LONG).show()
@@ -635,6 +644,18 @@ class MainActivity : ComponentActivity() {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
+
+        // Mark ON before the asynchronous geofence request so the UI and receivers
+        // agree on the state. If the user switches OFF while it is pending, the
+        // success callback must not silently turn automation back ON.
+        prefs.edit().putBoolean("active", true).apply()
+        if (!locationOn) {
+            HomeWifiReceiver.evaluate(this)
+            refreshStatus()
+            Toast.makeText(this, "Automation ON — home Wi-Fi fallback selected. Android may hide the Wi-Fi name while Location is OFF.", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val fence = Geofence.Builder()
             .setRequestId("SHANTI_HOME")
             .setCircularRegion(lat, lng, prefs.getInt("radius", 30).toFloat())
@@ -648,16 +669,36 @@ class MainActivity : ComponentActivity() {
         try {
             LocationServices.getGeofencingClient(this).addGeofences(request, geofencePendingIntent())
                 .addOnSuccessListener {
-                    prefs.edit().putBoolean("active", true).apply()
+                    if (!prefs.getBoolean("active", false)) {
+                        LocationServices.getGeofencingClient(this).removeGeofences(geofencePendingIntent())
+                        return@addOnSuccessListener
+                    }
                     refreshStatus()
-                    Toast.makeText(this, "Shanti Jeewan is ON.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Shanti Jeewan is ON — home detection active.", Toast.LENGTH_SHORT).show()
                 }
                 .addOnFailureListener {
-                    activeSwitch.isChecked = false
-                    Toast.makeText(this, "Could not activate: \${it.localizedMessage}", Toast.LENGTH_LONG).show()
+                    if (prefs.getBoolean("active", false)) {
+                        prefs.edit().putBoolean("active", false).apply()
+                        activeSwitch.setOnCheckedChangeListener(null)
+                        activeSwitch.isChecked = false
+                        activeSwitch.text = "  OFF"
+                        activeSwitch.setOnCheckedChangeListener { _, checked ->
+                            activeSwitch.text = if (checked) "  ON" else "  OFF"
+                            if (checked) activateHomeAutomation() else pauseAutomation()
+                        }
+                    }
+                    refreshStatus()
+                    Toast.makeText(this, "Could not activate geofence: ${it.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
         } catch (e: SecurityException) {
+            prefs.edit().putBoolean("active", false).apply()
+            activeSwitch.setOnCheckedChangeListener(null)
             activeSwitch.isChecked = false
+            activeSwitch.text = "  OFF"
+            activeSwitch.setOnCheckedChangeListener { _, checked ->
+                activeSwitch.text = if (checked) "  ON" else "  OFF"
+                if (checked) activateHomeAutomation() else pauseAutomation()
+            }
             Toast.makeText(this, "Location permission missing.", Toast.LENGTH_LONG).show()
         }
     }
