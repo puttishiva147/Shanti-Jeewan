@@ -31,8 +31,10 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
         when (event.geofenceTransition) {
             Geofence.GEOFENCE_TRANSITION_ENTER -> {
                 val wasInside = prefs.getBoolean("inside_home", false)
-                if (!wasInside && policy.isNotificationPolicyAccessGranted) {
-                    prefs.edit().putInt("previous_mode", audio.ringerMode).putInt("previous_filter", policy.currentInterruptionFilter).apply()
+                if (!wasInside) {
+                    prefs.edit().putInt("previous_mode", audio.ringerMode)
+                        .putInt("previous_filter", policy.currentInterruptionFilter)
+                        .putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING)).apply()
                 }
                 prefs.edit().putString("last_event", "Arrived home")
                     .putLong("last_event_time", System.currentTimeMillis())
@@ -60,9 +62,12 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
                     .putLong("last_event_time", System.currentTimeMillis())
                     .putBoolean("inside_home", false).apply()
                 WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
-                if (policy.isNotificationPolicyAccessGranted && wasInside) {
-                    audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
-                    policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
+                if (wasInside) {
+                    audio.setStreamVolume(AudioManager.STREAM_RING, prefs.getInt("previous_ring_volume", audio.getStreamMaxVolume(AudioManager.STREAM_RING)), 0)
+                    if (policy.isNotificationPolicyAccessGranted) {
+                        audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
+                        policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
+                    }
                 }
             }
         }
@@ -72,7 +77,11 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
         return try {
             when (mode) {
                 "vibrate" -> audio.ringerMode = AudioManager.RINGER_MODE_VIBRATE
-                "dnd" -> policy.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+                "low_sound" -> {
+                    audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                    val max = audio.getStreamMaxVolume(AudioManager.STREAM_RING)
+                    audio.setStreamVolume(AudioManager.STREAM_RING, (max * 0.25f).toInt().coerceAtLeast(1), 0)
+                }
                 else -> audio.ringerMode = AudioManager.RINGER_MODE_SILENT
             }
             true
@@ -92,7 +101,7 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
             context, 121, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val selectedMode = when (mode) { "vibrate" -> "Vibrate"; "dnd" -> "Do Not Disturb"; else -> "Silent" }
+        val selectedMode = when (mode) { "vibrate" -> "Vibrate"; "low_sound" -> "Low sound (25%)"; else -> "Silent" }
         val detail = if (silentApplied) {
             "Home location detected. Your phone has been switched to $selectedMode mode."
         } else {
@@ -126,7 +135,11 @@ class ReminderWorker(context: Context, params: WorkerParameters) : Worker(contex
         if (policy.isNotificationPolicyAccessGranted) {
             when (prefs.getString("arrival_mode", "silent")) {
                 "vibrate" -> audio.ringerMode = AudioManager.RINGER_MODE_VIBRATE
-                "dnd" -> policy.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+                "low_sound" -> {
+                    audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                    val max = audio.getStreamMaxVolume(AudioManager.STREAM_RING)
+                    audio.setStreamVolume(AudioManager.STREAM_RING, (max * 0.25f).toInt().coerceAtLeast(1), 0)
+                }
                 else -> audio.ringerMode = AudioManager.RINGER_MODE_SILENT
             }
         }
