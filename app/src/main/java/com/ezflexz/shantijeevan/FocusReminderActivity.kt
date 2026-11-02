@@ -222,7 +222,7 @@ class FocusReminderActivity : ComponentActivity() {
     private fun permissionButton(title: String, action: String) = Button(this).apply {
         text = title; isAllCaps = false; textSize = 13f; setTextColor(accent)
         setOnClickListener {
-            try { startActivity(Intent(action)) }
+            try { val i = Intent(action); if (action == Settings.ACTION_MANAGE_WRITE_SETTINGS) i.data = android.net.Uri.parse("package:$packageName"); startActivity(i) }
             catch (_: Throwable) { Toast.makeText(this@FocusReminderActivity, "Setting unavailable on this device", Toast.LENGTH_SHORT).show() }
         }
     }
