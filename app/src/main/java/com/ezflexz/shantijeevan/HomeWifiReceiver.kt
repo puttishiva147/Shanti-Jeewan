@@ -142,9 +142,10 @@ class HomeWifiReceiver : BroadcastReceiver() {
 
         private fun leaveHome(context: Context) {
             val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
-            restorePreviousMode(context)
+            val gpsStillInside = prefs.getBoolean("inside_home_gps", false)
+            if (!gpsStillInside) restorePreviousMode(context)
             prefs.edit().putBoolean("inside_home_wifi", false)
-                .putBoolean("inside_home", prefs.getBoolean("inside_home_gps", false))
+                .putBoolean("inside_home", gpsStillInside)
                 .putString("last_event", "Home Wi-Fi disconnected — previous phone mode restored")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
             androidx.work.WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
