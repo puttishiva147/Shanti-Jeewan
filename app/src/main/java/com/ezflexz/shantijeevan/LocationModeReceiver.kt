@@ -19,6 +19,7 @@ class LocationModeReceiver : BroadcastReceiver() {
                         android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE)
                 )
             } catch (_: Exception) {}
+            if (prefs.getBoolean("inside_home", false)) HomeWifiReceiver.restorePreviousMode(context)
             HomeWifiReceiver.evaluate(context)
             prefs.edit().putString("last_event", "Location OFF — checking saved home Wi-Fi")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
