@@ -11,6 +11,7 @@ import java.util.Calendar
 class FocusAppMonitorService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var lastBlockedPackage = ""
+    private var lastCheckinShown = 0L
     private val loop = object : Runnable {
         override fun run() {
             evaluateForeground()
@@ -31,33 +32,45 @@ class FocusAppMonitorService : AccessibilityService() {
     private fun evaluateForeground() {
         val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
         if (!p.getBoolean("enabled", false)) { finishSession(); return }
-        val packages = p.getStringSet("packages", emptySet()) ?: emptySet()
         val now = System.currentTimeMillis()
+
+        if (p.getBoolean("periodic_checkin_enabled", false)) {
+            val next = p.getLong("next_checkin_at", now + 45L * 60L * 1000L)
+            if (now >= next && now - lastCheckinShown > 60_000L) {
+                lastCheckinShown = now
+                p.edit().putLong("next_checkin_at", now + 45L * 60L * 1000L).apply()
+                showReminder("periodic")
+            }
+        }
+
+        val packages = p.getStringSet("packages", emptySet()) ?: emptySet()
         val existingUntil = p.getLong("session_until", 0L)
         if (existingUntil > 0L && now >= existingUntil) { finishSession(); return }
         if (packages.isEmpty() || (existingUntil == 0L && !insideSchedule(p))) return
         val root = rootInActiveWindow ?: return
         val current = root.packageName?.toString() ?: return
-        if (current == packageName || !packages.contains(current)) {
-            lastBlockedPackage = ""
-            return
-        }
+        if (current == packageName || !packages.contains(current)) { lastBlockedPackage = ""; return }
 
         var until = p.getLong("session_until", 0L)
         if (until == 0L) {
             until = now + 45L * 60L * 1000L
             p.edit().putLong("session_until", until).putLong("break_until", 0L).apply()
-            lowerCallVolume()
+            if (!p.getBoolean("manual_mode_off", false)) lowerCallVolume()
         }
         if (now >= until) { finishSession(); return }
         val breakUntil = p.getLong("break_until", 0L)
         if (now < breakUntil) { lastBlockedPackage = ""; return }
         if (lastBlockedPackage != current) {
             lastBlockedPackage = current
-            val i = Intent(this, FocusBlockerActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            startActivity(i)
+            showReminder("app")
         }
+    }
+
+    private fun showReminder(reason: String) {
+        val i = Intent(this, FocusBlockerActivity::class.java)
+            .putExtra("reminder_reason", reason)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        try { startActivity(i) } catch (_: Throwable) {}
     }
 
     private fun insideSchedule(p: android.content.SharedPreferences): Boolean {
@@ -73,8 +86,7 @@ class FocusAppMonitorService : AccessibilityService() {
         val audio = getSystemService(AUDIO_SERVICE) as AudioManager
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_RING)
         if (!p.getBoolean("volume_saved", false)) {
-            p.edit().putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING))
-                .putBoolean("volume_saved", true).apply()
+            p.edit().putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING)).putBoolean("volume_saved", true).apply()
         }
         audio.setStreamVolume(AudioManager.STREAM_RING, (max * 0.30f).toInt().coerceAtLeast(1), 0)
     }
@@ -90,7 +102,7 @@ class FocusAppMonitorService : AccessibilityService() {
     private fun finishSession() {
         val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
         p.edit().remove("session_until").remove("break_until").apply()
-        restoreCallVolume()
+        if (!p.getBoolean("manual_mode_off", false)) restoreCallVolume()
         lastBlockedPackage = ""
     }
 }
