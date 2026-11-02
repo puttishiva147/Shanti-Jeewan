@@ -627,7 +627,8 @@ class MainActivity : ComponentActivity() {
         val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
         val locationOn = locationManager.isLocationEnabled
         val wifiFallback = prefs.getBoolean("wifi_fallback_enabled", false) &&
-            !prefs.getString("home_wifi_ssid", null).isNullOrBlank()
+            (!prefs.getString("home_wifi_ssid", null).isNullOrBlank() ||
+             !prefs.getString("home_wifi_fingerprint", null).isNullOrBlank())
         if (!locationOn && !wifiFallback) {
             activeSwitch.isChecked = false
             Toast.makeText(this, "Location is OFF. Turn it ON or save your home Wi-Fi in Settings first.", Toast.LENGTH_LONG).show()
@@ -663,6 +664,8 @@ class MainActivity : ComponentActivity() {
         // agree on the state. If the user switches OFF while it is pending, the
         // success callback must not silently turn automation back ON.
         prefs.edit().putBoolean("active", true).apply()
+        // Evaluate saved router on activation even when GPS is enabled.
+        HomeWifiReceiver.evaluate(this)
         if (!locationOn) {
             HomeWifiReceiver.evaluate(this)
             refreshStatus()
