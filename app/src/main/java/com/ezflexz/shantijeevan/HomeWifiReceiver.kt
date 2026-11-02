@@ -102,11 +102,14 @@ class HomeWifiReceiver : BroadcastReceiver() {
             val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
             val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val policy = context.getSystemService(NotificationManager::class.java)
-            prefs.edit()
-                .putInt("previous_mode", audio.ringerMode)
-                .putInt("previous_filter", policy.currentInterruptionFilter)
-                .putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING))
-                .putBoolean("inside_home_wifi", true)
+            val alreadyHome = prefs.getBoolean("inside_home", false)
+            val editor = prefs.edit()
+            if (!alreadyHome) {
+                editor.putInt("previous_mode", audio.ringerMode)
+                    .putInt("previous_filter", policy.currentInterruptionFilter)
+                    .putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING))
+            }
+            editor.putBoolean("inside_home_wifi", true)
                 .putBoolean("inside_home", true)
                 .putString("last_event", "Home Wi-Fi detected — arrival")
                 .putLong("last_event_time", System.currentTimeMillis())
