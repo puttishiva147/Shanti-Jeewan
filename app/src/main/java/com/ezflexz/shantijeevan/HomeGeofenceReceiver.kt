@@ -24,13 +24,15 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
         val policy = context.getSystemService(NotificationManager::class.java)
         when (event.geofenceTransition) {
             Geofence.GEOFENCE_TRANSITION_ENTER -> {
+                prefs.edit().putString("last_event", "Arrived home")
+                    .putLong("last_event_time", System.currentTimeMillis())
+                    .putBoolean("inside_home", true).apply()
                 if (policy.isNotificationPolicyAccessGranted) {
                     if (!prefs.getBoolean("inside_home", false)) {
                         prefs.edit().putInt("previous_mode", audio.ringerMode).apply()
                     }
                     audio.ringerMode = AudioManager.RINGER_MODE_SILENT
                 }
-                prefs.edit().putBoolean("inside_home", true).apply()
                 val minutes = prefs.getInt("interval", 20).toLong().coerceAtLeast(15)
                 val reminder = PeriodicWorkRequestBuilder<ReminderWorker>(minutes, TimeUnit.MINUTES)
                     .setInitialDelay(minutes, TimeUnit.MINUTES).build()
@@ -44,11 +46,13 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
                     "home-reminder", ExistingPeriodicWorkPolicy.UPDATE, reminder)
             }
             Geofence.GEOFENCE_TRANSITION_EXIT -> {
+                prefs.edit().putString("last_event", "Left home")
+                    .putLong("last_event_time", System.currentTimeMillis())
+                    .putBoolean("inside_home", false).apply()
                 WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
                 if (policy.isNotificationPolicyAccessGranted && prefs.getBoolean("inside_home", false)) {
                     audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
                 }
-                prefs.edit().putBoolean("inside_home", false).apply()
             }
         }
     }
