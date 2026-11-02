@@ -27,6 +27,18 @@ class HomeWifiReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        fun restorePreviousMode(context: Context) {
+            val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
+            val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val policy = context.getSystemService(NotificationManager::class.java)
+            audio.setStreamVolume(AudioManager.STREAM_RING,
+                prefs.getInt("previous_ring_volume", audio.getStreamMaxVolume(AudioManager.STREAM_RING)), 0)
+            if (policy.isNotificationPolicyAccessGranted) {
+                audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
+                policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
+            }
+        }
+
         fun evaluate(context: Context) {
             val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
             if (!prefs.getBoolean("active", false) || !prefs.getBoolean("wifi_fallback_enabled", false)) return
@@ -85,14 +97,7 @@ class HomeWifiReceiver : BroadcastReceiver() {
 
         private fun leaveHome(context: Context) {
             val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
-            val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            val policy = context.getSystemService(NotificationManager::class.java)
-            audio.setStreamVolume(AudioManager.STREAM_RING,
-                prefs.getInt("previous_ring_volume", audio.getStreamMaxVolume(AudioManager.STREAM_RING)), 0)
-            if (policy.isNotificationPolicyAccessGranted) {
-                audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
-                policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
-            }
+            restorePreviousMode(context)
             prefs.edit().putBoolean("inside_home", false)
                 .putString("last_event", "Home Wi-Fi disconnected — previous phone mode restored")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
