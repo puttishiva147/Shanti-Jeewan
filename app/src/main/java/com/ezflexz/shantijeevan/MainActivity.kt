@@ -301,16 +301,17 @@ class MainActivity : ComponentActivity() {
 
         page.addView(label("HOME WI-FI FALLBACK"))
         val savedWifi = prefs.getString("home_wifi_ssid", null)
+        val savedWifiFingerprint = prefs.getString("home_wifi_fingerprint", null)
         page.addView(TextView(this).apply {
-            text = if (savedWifi.isNullOrBlank()) "Not configured. Connect to your home Wi-Fi, then save it here. This is used when Location is OFF."
-                else "Saved home Wi-Fi: $savedWifi"
+            text = if (savedWifi.isNullOrBlank() && savedWifiFingerprint.isNullOrBlank()) "Not configured. Connect to your home Wi-Fi, then save it here. Router fingerprint helps detect it when Location is OFF."
+                else "Saved home Wi-Fi: ${savedWifi ?: "Router/LAN fingerprint"}\nLocation-OFF fingerprint: ${if (savedWifiFingerprint != null) "Saved" else "Not available"}"
             textSize = 13f
             setTextColor(0xFF626B63.toInt())
             setPadding(0, 0, 0, dp(8))
         }, full())
         page.addView(actionButton("SAVE CURRENT WI-FI AS HOME") { saveConnectedHomeWifi() }, full())
         page.addView(actionButton("CLEAR SAVED HOME WI-FI") {
-            prefs.edit().remove("home_wifi_ssid").putBoolean("wifi_fallback_enabled", false).apply()
+            prefs.edit().remove("home_wifi_ssid").remove("home_wifi_fingerprint").putBoolean("wifi_fallback_enabled", false).apply()
             Toast.makeText(this, "Saved home Wi-Fi cleared.", Toast.LENGTH_SHORT).show()
             buildSettingsScreen()
         }, full())
