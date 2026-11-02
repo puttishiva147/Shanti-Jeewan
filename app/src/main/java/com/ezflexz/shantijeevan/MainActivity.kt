@@ -316,6 +316,33 @@ class MainActivity : ComponentActivity() {
         )
         page.addView(intervalSpinner, full())
 
+        page.addView(label("VOICE VOLUME"))
+        val volumeLabel = TextView(this).apply {
+            text = "Reminder voice: " + prefs.getInt("voice_volume", 45) + "%"
+            textSize = 13f
+            setTextColor(0xFF626B63.toInt())
+        }
+        page.addView(volumeLabel, full())
+        val volumeSeek = SeekBar(this).apply {
+            max = 100
+            progress = prefs.getInt("voice_volume", 45)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    volumeLabel.text = "Reminder voice: " + progress + "%"
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+        page.addView(volumeSeek, full())
+        page.addView(actionButton("TEST VOICE REMINDER") {
+            saveSettings()
+            prefs.edit().putInt("voice_volume", volumeSeek.progress).apply()
+            val spoken = nameField.text.toString().ifBlank { "User" } + ", " +
+                messageField.text.toString().ifBlank { "Aapka phone Silent Mode mein hai." }
+            thread { ReminderWorker.speak(this, spoken) }
+        }, full())
+
         page.addView(label("HOME DETECTION RADIUS"))
         radiusSpinner = spinner(
             listOf("100 metres", "150 metres", "200 metres", "300 metres"),
