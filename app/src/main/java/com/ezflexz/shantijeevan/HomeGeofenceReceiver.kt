@@ -32,15 +32,15 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
             Geofence.GEOFENCE_TRANSITION_ENTER -> {
                 val wasInside = prefs.getBoolean("inside_home", false)
                 if (!wasInside && policy.isNotificationPolicyAccessGranted) {
-                    prefs.edit().putInt("previous_mode", audio.ringerMode).apply()
+                    prefs.edit().putInt("previous_mode", audio.ringerMode).putInt("previous_filter", policy.currentInterruptionFilter).apply()
                 }
                 prefs.edit().putString("last_event", "Arrived home")
                     .putLong("last_event_time", System.currentTimeMillis())
                     .putBoolean("inside_home", true).apply()
 
-                val silentApplied = policy.isNotificationPolicyAccessGranted
-                if (silentApplied) audio.ringerMode = AudioManager.RINGER_MODE_SILENT
-                showArrivalNotification(context, silentApplied)
+                val mode = prefs.getString("arrival_mode", "silent")
+                val silentApplied = policy.isNotificationPolicyAccessGranted && applyArrivalMode(audio, policy, mode)
+                showArrivalNotification(context, silentApplied, mode)
 
                 val minutes = prefs.getInt("interval", 20).toLong().coerceAtLeast(15)
                 val reminder = PeriodicWorkRequestBuilder<ReminderWorker>(minutes, TimeUnit.MINUTES)
@@ -62,12 +62,24 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
                 WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
                 if (policy.isNotificationPolicyAccessGranted && wasInside) {
                     audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
+                    policy.setInterruptionFilter(prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL))
                 }
             }
         }
     }
 
-    private fun showArrivalNotification(context: Context, silentApplied: Boolean) {
+    private fun applyArrivalMode(audio: AudioManager, policy: NotificationManager, mode: String?): Boolean {
+        return try {
+            when (mode) {
+                "vibrate" -> audio.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+                "dnd" -> policy.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+                else -> audio.ringerMode = AudioManager.RINGER_MODE_SILENT
+            }
+            true
+        } catch (_: SecurityException) { false }
+    }
+
+    private fun showArrivalNotification(context: Context, silentApplied: Boolean, mode: String?) {
         val manager = context.getSystemService(NotificationManager::class.java)
         val channelId = "shanti_arrival"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -80,14 +92,15 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
             context, 121, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val selectedMode = when (mode) { "vibrate" -> "Vibrate"; "dnd" -> "Do Not Disturb"; else -> "Silent" }
         val detail = if (silentApplied) {
-            "Home location detected. Your phone has been switched to Silent mode."
+            "Home location detected. Your phone has been switched to $selectedMode mode."
         } else {
             "Home location detected, but Silent mode permission is unavailable."
         }
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_shanti)
-            .setContentTitle(if (silentApplied) "You're home — Silent mode ON" else "Home location detected")
+            .setContentTitle(if (silentApplied) "Home arrival — $selectedMode ON" else "Home location detected")
             .setContentText(detail)
             .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
