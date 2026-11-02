@@ -153,6 +153,8 @@ class FocusReminderActivity : ComponentActivity() {
         permissions.addView(accessStatus)
         permissions.addView(permissionButton("Enable Accessibility", Settings.ACTION_ACCESSIBILITY_SETTINGS))
         permissions.addView(permissionButton("Allow sound & ringer control", Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        permissions.addView(permissionButton("Allow scheduled screen dimming", Settings.ACTION_MANAGE_WRITE_SETTINGS))
+        permissions.addView(label("Screen dimming uses a fixed low brightness during active shifts and restores your previous brightness afterward. Android requires this one-time special access."))
         page.addView(permissions)
 
         page.addView(TextView(this).apply {
