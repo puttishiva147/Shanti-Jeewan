@@ -20,6 +20,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.*
+import com.google.android.gms.tasks.CancellationTokenSource
 
 class MainActivity : ComponentActivity() {
     private val prefs by lazy { getSharedPreferences("shanti", MODE_PRIVATE) }
@@ -422,17 +423,25 @@ class MainActivity : ComponentActivity() {
 
     private fun saveCurrentLocation() {
         if (!hasForegroundLocation()) return
-        LocationServices.getFusedLocationProviderClient(this).lastLocation
+        Toast.makeText(this, "Getting a fresh GPS location…", Toast.LENGTH_SHORT).show()
+        val client = LocationServices.getFusedLocationProviderClient(this)
+        val token = CancellationTokenSource()
+        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.token)
             .addOnSuccessListener { location ->
                 if (location != null) {
                     prefs.edit().putString("lat", location.latitude.toString())
-                        .putString("lng", location.longitude.toString()).apply()
+                        .putString("lng", location.longitude.toString())
+                        .putFloat("location_accuracy", location.accuracy)
+                        .putLong("location_saved_at", System.currentTimeMillis()).apply()
                     resolveAndSaveAddress(location.latitude, location.longitude) { if (settingsScreen) buildSettingsScreen() }
-                    Toast.makeText(this, "Home location coordinates saved.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Fresh GPS location saved (±" + location.accuracy.toInt() + " m).", Toast.LENGTH_LONG).show()
                     if (settingsScreen) buildSettingsScreen()
                 } else {
-                    Toast.makeText(this, "Location unavailable. Turn on GPS and try again.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "GPS fix unavailable. Turn on Location and try again outdoors.", Toast.LENGTH_LONG).show()
                 }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Could not get GPS location: " + it.localizedMessage, Toast.LENGTH_LONG).show()
             }
     }
     private fun updateSavedLocationInfo(view: TextView) {
@@ -442,7 +451,10 @@ class MainActivity : ComponentActivity() {
         view.text = if (lat == null || lng == null) {
             "No home location saved yet. Pick your current location or enter custom coordinates below."
         } else {
-            "Location: " + (address ?: "Address lookup pending") + "\nLatitude: " + lat + "\nLongitude: " + lng
+            "Location: " + (address ?: "Address lookup pending") +
+                "\nLatitude: " + lat + "\nLongitude: " + lng +
+                "\nGPS accuracy: ±" + prefs.getFloat("location_accuracy", 0f).toInt() + " m" +
+                "\nSaved: " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(prefs.getLong("location_saved_at", 0L)))
         }
     }
 
