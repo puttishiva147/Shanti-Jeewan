@@ -1,7 +1,9 @@
 package com.ezflexz.shantijeevan
 
 import android.Manifest
+import android.app.AlertDialog
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
