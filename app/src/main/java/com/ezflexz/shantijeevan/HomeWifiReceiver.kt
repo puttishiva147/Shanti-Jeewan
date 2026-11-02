@@ -46,7 +46,16 @@ class HomeWifiReceiver : BroadcastReceiver() {
             val ssid = try {
                 @Suppress("DEPRECATION")
                 wifi.connectionInfo?.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
-            } catch (_: SecurityException) { null } ?: return
+            } catch (_: SecurityException) { null }
+            if (ssid == null) {
+                // Android 10+ can redact the connected SSID when Location is OFF.
+                // Keep the automation enabled, but expose the real blocker in app status.
+                prefs.edit()
+                    .putString("last_event", "Wi-Fi connected, but Android hid the network name while Location is OFF")
+                    .putLong("last_event_time", System.currentTimeMillis())
+                    .apply()
+                return
+            }
             val homeSsid = prefs.getString("home_wifi_ssid", null) ?: return
             val connectedHome = ssid == homeSsid
             val inside = prefs.getBoolean("inside_home", false)
