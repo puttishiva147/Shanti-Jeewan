@@ -34,9 +34,14 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
                 val minutes = prefs.getInt("interval", 20).toLong().coerceAtLeast(15)
                 val reminder = PeriodicWorkRequestBuilder<ReminderWorker>(minutes, TimeUnit.MINUTES)
                     .setInitialDelay(minutes, TimeUnit.MINUTES).build()
-                WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                val workManager = WorkManager.getInstance(context)
+                workManager.enqueueUniqueWork(
+                    "home-reminder-first",
+                    ExistingWorkPolicy.REPLACE,
+                    OneTimeWorkRequestBuilder<ReminderWorker>().build()
+                )
+                workManager.enqueueUniquePeriodicWork(
                     "home-reminder", ExistingPeriodicWorkPolicy.UPDATE, reminder)
-                ReminderWorker.speak(context, reminderText(prefs))
             }
             Geofence.GEOFENCE_TRANSITION_EXIT -> {
                 WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
