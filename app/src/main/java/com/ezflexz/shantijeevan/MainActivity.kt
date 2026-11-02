@@ -486,7 +486,10 @@ class MainActivity : ComponentActivity() {
         LocationServices.getGeofencingClient(this).removeGeofences(geofencePendingIntent())
         androidx.work.WorkManager.getInstance(this).cancelUniqueWork("home-reminder")
         androidx.work.WorkManager.getInstance(this).cancelUniqueWork("home-reminder-first")
-        prefs.edit().putBoolean("active", false).apply()
+        if (prefs.getBoolean("inside_home", false)) HomeWifiReceiver.restorePreviousMode(this)
+        prefs.edit().putBoolean("active", false).putBoolean("inside_home", false)
+            .putString("last_event", "Automation paused — previous phone mode restored")
+            .putLong("last_event_time", System.currentTimeMillis()).apply()
         if (::status.isInitialized) refreshStatus()
     }
 
