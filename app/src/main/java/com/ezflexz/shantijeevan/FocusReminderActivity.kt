@@ -92,10 +92,6 @@ class FocusReminderActivity : ComponentActivity() {
             setOnClickListener { p.edit().putString("message", message.text.toString()).apply(); Toast.makeText(this@FocusReminderActivity, "Message saved", Toast.LENGTH_SHORT).show() }
         })
         root.addView(Button(this).apply {
-            text = "GRANT USAGE ACCESS"
-            setOnClickListener { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
-        })
-        root.addView(Button(this).apply {
             text = "ENABLE ACCESSIBILITY BLOCKER"
             setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         })
