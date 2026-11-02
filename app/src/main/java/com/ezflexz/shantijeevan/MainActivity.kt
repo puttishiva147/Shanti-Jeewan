@@ -60,6 +60,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (prefs.getBoolean("setup_complete", false)) buildHomeScreen() else buildSetupScreen()
+        if (intent.getBooleanExtra("QUICK_TILE_TOGGLE", false)) {
+            window.decorView.post {
+                if (!prefs.getBoolean("setup_complete", false)) {
+                    Toast.makeText(this, "Complete Shanti Jeewan setup first.", Toast.LENGTH_LONG).show()
+                } else if (::activeSwitch.isInitialized) {
+                    activeSwitch.isChecked = !prefs.getBoolean("active", false)
+                }
+            }
+        }
     }
 
     override fun onResume() {
