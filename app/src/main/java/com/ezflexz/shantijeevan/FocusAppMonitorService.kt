@@ -76,9 +76,21 @@ class FocusAppMonitorService : AccessibilityService() {
     private fun insideSchedule(p: android.content.SharedPreferences): Boolean {
         val c = Calendar.getInstance()
         val now = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
+        if (p.getBoolean("multi_shift_enabled", false)) {
+            val s1 = p.getInt("shift1_start", 900)
+            val e1 = p.getInt("shift1_end", 960)
+            val s2 = p.getInt("shift2_start", 0)
+            val e2 = p.getInt("shift2_end", 240)
+            return inTimeRange(now, s1, e1) || inTimeRange(now, s2, e2)
+        }
         val start = p.getInt("start_minute", 900)
         val end = p.getInt("end_minute", 1020)
-        return if (start <= end) now in start until end else now >= start || now < end
+        return inTimeRange(now, start, end)
+    }
+
+    private fun inTimeRange(now: Int, start: Int, end: Int): Boolean {
+        if (start == end) return false
+        return if (start < end) now in start until end else now >= start || now < end
     }
 
     private fun lowerCallVolume() {
