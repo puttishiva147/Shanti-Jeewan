@@ -584,7 +584,7 @@ class MainActivity : ComponentActivity() {
             .setRequestId("SHANTI_HOME")
             .setCircularRegion(lat, lng, prefs.getInt("radius", 30).toFloat())
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-            .setLoiteringDelay(60_000)
+            .setNotificationResponsiveness(0)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .build()
         val request = GeofencingRequest.Builder()
