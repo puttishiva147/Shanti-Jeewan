@@ -58,12 +58,34 @@ class MainActivity : ComponentActivity() {
             setPadding(dp(24), dp(30), dp(24), dp(24))
             setBackgroundColor(0xFFF8F8F6.toInt())
         }
-        page.addView(TextView(this).apply {
-            text = "◒"
-            textSize = 46f
+        val appBrand = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setTextColor(0xFF252A27.toInt())
-        }, full())
+            setPadding(0, 0, 0, dp(8))
+        }
+        appBrand.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_shanti)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }, LinearLayout.LayoutParams(dp(52), dp(52)))
+        appBrand.addView(TextView(this).apply {
+            text = "EZFLEXZ"
+            textSize = 16f
+            letterSpacing = .22f
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setTextColor(0xFF303842.toInt())
+            setPadding(dp(10), 0, 0, 0)
+        }, LinearLayout.LayoutParams(-2, -2))
+        appBrand.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xFF246BFE.toInt())
+            }
+            elevation = dp(2).toFloat()
+        }, LinearLayout.LayoutParams(dp(8), dp(8)).apply {
+            leftMargin = dp(7)
+            gravity = Gravity.CENTER_VERTICAL
+        })
+        page.addView(appBrand, full())
         page.addView(TextView(this).apply {
             text = "Shanti Jeewan"
             textSize = 28f
@@ -152,17 +174,29 @@ class MainActivity : ComponentActivity() {
             setTextColor(0xFF929891.toInt())
             gravity = Gravity.CENTER
         }, full())
-        footer.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ezflexz_mark)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(dp(46), dp(46)))
-        footer.addView(TextView(this).apply {
-            text = "EZFLEXZ"
-            textSize = 12f
-            letterSpacing = .22f
+        val poweredBrand = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setTextColor(0xFF353B36.toInt())
-        }, full())
+            setPadding(0, dp(7), 0, 0)
+        }
+        poweredBrand.addView(TextView(this).apply {
+            text = "EZFLEXZ"
+            textSize = 15f
+            letterSpacing = .24f
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setTextColor(0xFF252D3A.toInt())
+        }, LinearLayout.LayoutParams(-2, -2))
+        poweredBrand.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xFF246BFE.toInt())
+            }
+            elevation = dp(2).toFloat()
+        }, LinearLayout.LayoutParams(dp(8), dp(8)).apply {
+            leftMargin = dp(7)
+            gravity = Gravity.CENTER_VERTICAL
+        })
+        footer.addView(poweredBrand, full())
         page.addView(footer, full())
         setContentView(ScrollView(this).apply { addView(page) })
         refreshStatus()
@@ -249,6 +283,10 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Settings saved.", Toast.LENGTH_SHORT).show()
             buildSettingsScreen()
         }, full().apply { topMargin = dp(22) })
+        setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(page)
+        })
     }
 
     private fun openBackgroundLocationSettings() {
