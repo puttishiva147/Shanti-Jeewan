@@ -13,6 +13,7 @@ class FocusBlockerActivity : Activity() {
     private var tts: TextToSpeech? = null
     private val handler = Handler(Looper.getMainLooper())
     private var spoken = false
+    private var repeatTask: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,14 +52,25 @@ class FocusBlockerActivity : Activity() {
                 spoken = true
             }
         }
-        handler.postDelayed(object : Runnable {
+        repeatTask = object : Runnable {
             override fun run() {
-                if (!isFinishing) {
+                if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
                     tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "focus-repeat")
                     handler.postDelayed(this, 60_000L)
                 }
             }
-        }, 60_000L)
+        }
+        handler.postDelayed(repeatTask!!, 60_000L)
+    }
+
+    override fun onPause() {
+        repeatTask?.let { handler.removeCallbacks(it) }
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        repeatTask?.let { handler.removeCallbacks(it); handler.postDelayed(it, 60_000L) }
     }
 
     override fun onDestroy() {
