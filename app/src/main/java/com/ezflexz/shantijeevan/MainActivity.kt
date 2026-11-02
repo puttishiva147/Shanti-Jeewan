@@ -185,15 +185,35 @@ class MainActivity : ComponentActivity() {
         }, full())
 
         page.addView(label("HOME LOCATION"))
-        page.addView(actionButton("SET CURRENT LOCATION AS HOME") {
+        page.addView(TextView(this).apply {
+            text = if (prefs.getString("lat", null) != null) "✓ Home location saved" else "Not set yet — stand at home and pick your current location."
+            textSize = 13f
+            setTextColor(0xFF626B63.toInt())
+            setPadding(0, 0, 0, dp(8))
+        }, full())
+        page.addView(actionButton(if (prefs.getString("lat", null) != null) "UPDATE HOME LOCATION" else "PICK CURRENT LOCATION AS HOME") {
             if (hasForegroundLocation()) saveCurrentLocation()
             else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }, full())
+        page.addView(TextView(this).apply {
+            val allowed = Build.VERSION.SDK_INT < 29 ||
+                ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+            text = if (allowed) "✓ Background location allowed" else "Required to detect arrival/exit when the app is closed."
+            textSize = 13f
+            setTextColor(0xFF626B63.toInt())
+            setPadding(0, dp(8), 0, dp(8))
         }, full())
         page.addView(actionButton("GRANT BACKGROUND LOCATION") {
             openBackgroundLocationSettings()
         }, full())
         page.addView(label("SILENT MODE"))
-        page.addView(actionButton("ALLOW SILENT MODE ACCESS") {
+        page.addView(TextView(this).apply {
+            text = if (getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted) "✓ Silent Mode access granted" else "Required to switch Silent Mode on and restore your previous mode."
+            textSize = 13f
+            setTextColor(0xFF626B63.toInt())
+            setPadding(0, 0, 0, dp(8))
+        }, full())
+        page.addView(actionButton("OPEN SILENT MODE PERMISSION") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }, full())
 
