@@ -70,6 +70,16 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 wifi.connectionInfo?.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
             } catch (_: SecurityException) { null }
+            val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val wifiConnected = cm.allNetworks.any { network ->
+                cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+            if (!wifiConnected) {
+                if (prefs.getBoolean("inside_home", false)) leaveHome(context)
+                else prefs.edit().putString("last_event", "Wi-Fi disconnected — waiting for home network")
+                    .putLong("last_event_time", System.currentTimeMillis()).apply()
+                return
+            }
             val currentFingerprint = getWifiFingerprint(context)
             val savedFingerprint = prefs.getString("home_wifi_fingerprint", null)
             val homeSsid = prefs.getString("home_wifi_ssid", null)
