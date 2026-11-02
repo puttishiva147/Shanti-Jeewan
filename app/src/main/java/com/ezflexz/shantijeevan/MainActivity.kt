@@ -465,15 +465,24 @@ class MainActivity : ComponentActivity() {
             val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
             @Suppress("DEPRECATION")
             val ssid = wifi.connectionInfo?.ssid?.trim('"')
-            if (ssid.isNullOrBlank() || ssid == "<unknown ssid>") {
-                Toast.makeText(this, "Wi-Fi name is unavailable. Connect to your home Wi-Fi and ensure Android allows nearby Wi-Fi access.", Toast.LENGTH_LONG).show()
+                ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+            val fingerprint = HomeWifiReceiver.getWifiFingerprint(this)
+            if (ssid == null && fingerprint == null) {
+                Toast.makeText(this, "Home Wi-Fi details unavailable. Connect to home Wi-Fi, turn Location ON temporarily, then save again.", Toast.LENGTH_LONG).show()
                 return
             }
-            prefs.edit().putString("home_wifi_ssid", ssid).putBoolean("wifi_fallback_enabled", true).apply()
-            Toast.makeText(this, "Home Wi-Fi saved: $ssid", Toast.LENGTH_LONG).show()
+            prefs.edit()
+                .putString("home_wifi_ssid", ssid)
+                .putString("home_wifi_fingerprint", fingerprint)
+                .putBoolean("wifi_fallback_enabled", true)
+                .apply()
+            val label = ssid ?: "Router/LAN fingerprint saved"
+            Toast.makeText(this, "Home Wi-Fi saved: $label", Toast.LENGTH_LONG).show()
             buildSettingsScreen()
         } catch (_: SecurityException) {
-            Toast.makeText(this, "Android blocked Wi-Fi name access. Check Nearby devices and Location permissions.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Android blocked Wi-Fi details. Allow Nearby devices and try again.", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not save home Wi-Fi: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
