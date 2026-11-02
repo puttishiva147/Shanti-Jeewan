@@ -549,9 +549,13 @@ class MainActivity : ComponentActivity() {
         val backgroundAllowed = Build.VERSION.SDK_INT < 29 ||
             ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
         val silentAllowed = getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted
-        status.text = (if (active) "Automation is active" else "Automation is off") + "\n" +
+        val lastEvent = prefs.getString("last_event", "No arrival or exit event received yet")
+        val eventTime = prefs.getLong("last_event_time", 0L)
+        val eventStamp = if (eventTime > 0L) java.text.DateFormat.getTimeInstance().format(java.util.Date(eventTime)) else "—"
+        status.text = (if (active) "Geofence registered" else "Automation is off") + "\n" +
             (if (saved) "Home location saved" else "Home location not set") + "\n" +
-            "Background location: ${if (backgroundAllowed) "Allowed" else "Needed"}  •  Silent access: ${if (silentAllowed) "Allowed" else "Needed"}"
+            "Background location: ${if (backgroundAllowed) "Allowed" else "Needed"}  •  Silent access: ${if (silentAllowed) "Allowed" else "Needed"}" +
+            "\nLast event: $lastEvent ($eventStamp)\n"
         if (::activeSwitch.isInitialized && activeSwitch.isChecked != active) {
             activeSwitch.setOnCheckedChangeListener(null)
             activeSwitch.isChecked = active
