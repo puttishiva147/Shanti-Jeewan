@@ -35,13 +35,10 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 val address = route.gateway
                 if (route.isDefaultRoute && address is Inet4Address) address.hostAddress else null
             }.sorted().firstOrNull() ?: return null
-            val localNetworks = lp.linkAddresses.mapNotNull { link ->
-                val address = link.address
-                if (address is Inet4Address) "${address.hostAddress}/${link.prefixLength}" else null
-            }.sorted()
+            // The phone DHCP address changes on reconnect; use the router gateway and DNS only.
             val dns = lp.dnsServers.filterIsInstance<Inet4Address>()
                 .mapNotNull { it.hostAddress }.sorted()
-            return "gw=$gateway|lan=${localNetworks.joinToString(",")}|dns=${dns.joinToString(",")}"
+            return "gw=$gateway|dns=${dns.joinToString(",")}"
         }
 
         fun restorePreviousMode(context: Context) {
