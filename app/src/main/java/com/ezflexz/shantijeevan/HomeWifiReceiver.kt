@@ -6,6 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.net.wifi.WifiManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.LinkProperties
+import java.net.Inet4Address
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -27,6 +31,25 @@ class HomeWifiReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        fun getWifiFingerprint(context: Context): String? {
+            val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val wifiNetwork = cm.allNetworks.firstOrNull { network ->
+                cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            } ?: return null
+            val lp: LinkProperties = cm.getLinkProperties(wifiNetwork) ?: return null
+            val gateway = lp.routes.mapNotNull { route ->
+                val address = route.gateway
+                if (route.isDefaultRoute && address is Inet4Address) address.hostAddress else null
+            }.sorted().firstOrNull() ?: return null
+            val localNetworks = lp.linkAddresses.mapNotNull { link ->
+                val address = link.address
+                if (address is Inet4Address) "${address.hostAddress}/${link.prefixLength}" else null
+            }.sorted()
+            val dns = lp.dnsServers.filterIsInstance<Inet4Address>()
+                .mapNotNull { it.hostAddress }.sorted()
+            return "gw=$gateway|lan=${localNetworks.joinToString(",")}|dns=${dns.joinToString(",")}"
+        }
+
         fun restorePreviousMode(context: Context) {
             val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
             val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -47,17 +70,21 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 wifi.connectionInfo?.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
             } catch (_: SecurityException) { null }
-            if (ssid == null) {
-                // Android 10+ can redact the connected SSID when Location is OFF.
-                // Keep the automation enabled, but expose the real blocker in app status.
+            val currentFingerprint = getWifiFingerprint(context)
+            val savedFingerprint = prefs.getString("home_wifi_fingerprint", null)
+            val homeSsid = prefs.getString("home_wifi_ssid", null)
+            // Prefer the saved router/LAN fingerprint. It remains readable on many
+            // Android builds even when Location is OFF and SSID is privacy-redacted.
+            val connectedHome = (savedFingerprint != null && currentFingerprint != null &&
+                currentFingerprint == savedFingerprint) || (homeSsid != null && ssid == homeSsid)
+            if (currentFingerprint == null && ssid == null) {
                 prefs.edit()
-                    .putString("last_event", "Wi-Fi connected, but Android hid the network name while Location is OFF")
+                    .putString("last_event", "Wi-Fi is connected, but Android hides both network identity and router details")
                     .putLong("last_event_time", System.currentTimeMillis())
                     .apply()
                 return
             }
-            val homeSsid = prefs.getString("home_wifi_ssid", null) ?: return
-            val connectedHome = ssid == homeSsid
+            if (savedFingerprint == null && homeSsid == null) return
             val inside = prefs.getBoolean("inside_home", false)
             if (connectedHome && !inside) enterHome(context)
             else if (!connectedHome && inside) leaveHome(context)
