@@ -20,11 +20,7 @@ class HomeWifiReceiver : BroadcastReceiver() {
             intent.action != "android.net.conn.CONNECTIVITY_CHANGE") return
         val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("active", false) || !prefs.getBoolean("wifi_fallback_enabled", false)) return
-        val networkInfo = intent.getParcelableExtra<android.net.NetworkInfo>(WifiManager.EXTRA_NETWORK_INFO)
-        if (networkInfo != null && !networkInfo.isConnected) {
-            if (prefs.getBoolean("inside_home_wifi", false)) leaveHome(context)
-            return
-        }
+        // Inspect the currently active networks; disconnect broadcasts may be stale.
         evaluate(context)
     }
 
@@ -83,8 +79,11 @@ class HomeWifiReceiver : BroadcastReceiver() {
             val homeSsid = prefs.getString("home_wifi_ssid", null)
             // Prefer the saved router/LAN fingerprint. It remains readable on many
             // Android builds even when Location is OFF and SSID is privacy-redacted.
-            val connectedHome = (savedFingerprint != null && currentFingerprint != null &&
-                currentFingerprint == savedFingerprint) || (homeSsid != null && ssid == homeSsid)
+            val connectedHome = if (savedFingerprint != null && currentFingerprint != null) {
+                currentFingerprint == savedFingerprint
+            } else {
+                homeSsid != null && ssid == homeSsid
+            }
             if (currentFingerprint == null && ssid == null) {
                 prefs.edit()
                     .putString("last_event", "Wi-Fi is connected, but Android hides both network identity and router details")
