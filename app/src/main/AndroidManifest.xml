@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <application
         android:allowBackup="true"
         android:label="Shanti Jeewan"
@@ -19,6 +20,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity android:name=".FocusReminderActivity" android:exported="false"/>
+        <activity android:name=".FocusBlockerActivity" android:exported="false" android:excludeFromRecents="true" android:launchMode="singleTop"/>
+        <service android:name=".FocusAppMonitorService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/focus_accessibility_service"/>
+        </service>
         <receiver android:name=".HomeGeofenceReceiver" android:exported="false"/>
         <receiver android:name=".HomeWifiReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
