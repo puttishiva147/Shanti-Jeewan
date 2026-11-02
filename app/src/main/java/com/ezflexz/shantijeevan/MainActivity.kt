@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             result[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
             saveCurrentLocation()
+            if (!prefs.getBoolean("setup_complete", false)) buildSetupScreen()
         } else {
             Toast.makeText(this, "Location permission is required.", Toast.LENGTH_LONG).show()
             if (::activeSwitch.isInitialized) activeSwitch.isChecked = false
@@ -49,7 +50,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            activateHomeAutomation()
+            if (!prefs.getBoolean("setup_complete", false)) buildSetupScreen() else activateHomeAutomation()
         } else {
             Toast.makeText(this, "Arrival confirmation notification is required. Allow notifications and turn ON again.", Toast.LENGTH_LONG).show()
             if (::activeSwitch.isInitialized) activeSwitch.isChecked = false
@@ -58,12 +59,44 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        buildHomeScreen()
+        if (prefs.getBoolean("setup_complete", false)) buildHomeScreen() else buildSetupScreen()
     }
 
     override fun onResume() {
         super.onResume()
-        if (::status.isInitialized && !settingsScreen) refreshStatus()
+        if (!prefs.getBoolean("setup_complete", false)) {
+            if (!settingsScreen) buildSetupScreen()
+        } else if (::status.isInitialized && !settingsScreen) refreshStatus()
+    }
+
+    private fun setupStep(page: LinearLayout, icon: String, title: String, detail: String, done: Boolean, button: String, action: () -> Unit) {
+        val item = card().apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.START }
+        item.addView(TextView(this).apply { text = icon + "  " + title + if (done) "   ✓ DONE" else "   REQUIRED"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); setTextColor(if (done) 0xFF287A48.toInt() else 0xFF202522.toInt()) }, full())
+        item.addView(TextView(this).apply { text = detail; textSize = 13f; setTextColor(0xFF68716A.toInt()); setPadding(0, dp(7), 0, dp(10)) }, full())
+        item.addView(actionButton(if (done) "✓ COMPLETED" else button, action).apply { isEnabled = !done }, full())
+        page.addView(item, full().apply { bottomMargin = dp(12) })
+    }
+
+    private fun buildSetupScreen() {
+        settingsScreen = false
+        val page = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(22), dp(26), dp(22), dp(30)); setBackgroundColor(0xFFF8F8F6.toInt()) }
+        page.addView(ImageView(this).apply { setImageResource(R.drawable.ic_shanti); scaleType = ImageView.ScaleType.FIT_CENTER }, LinearLayout.LayoutParams(dp(68), dp(68)).apply { gravity = Gravity.CENTER })
+        page.addView(TextView(this).apply { text = "Welcome to Shanti Jeewan"; textSize = 25f; gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); setTextColor(0xFF202522.toInt()); setPadding(0, dp(10), 0, dp(5)) }, full())
+        page.addView(TextView(this).apply { text = "Complete these steps before opening the app."; textSize = 14f; gravity = Gravity.CENTER; setTextColor(0xFF737B74.toInt()); setPadding(0, 0, 0, dp(18)) }, full())
+        val locationDone = prefs.getString("lat", null) != null && hasForegroundLocation()
+        setupStep(page, "📍", "1. Home location", "Allow location and save your current home location using GPS.", locationDone, "ALLOW LOCATION & DETECT HOME") { if (hasForegroundLocation()) saveCurrentLocation() else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }
+        val backgroundDone = Build.VERSION.SDK_INT < 29 || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+        setupStep(page, "🛰️", "2. Background location", "Choose Allow all the time to detect arrival and exit while the app is closed.", backgroundDone, "SET BACKGROUND LOCATION") { openBackgroundLocationSettings() }
+        val silentDone = getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted
+        setupStep(page, "🔕", "3. Silent Mode access", "Allow Shanti Jeewan in Android Modes access / Do Not Disturb access.", silentDone, "OPEN MODES ACCESS") { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+        val notificationsDone = Build.VERSION.SDK_INT < 33 || ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        setupStep(page, "🔔", "4. Arrival notification", "Allow notifications for the home detected + Silent mode confirmation.", notificationsDone, "ALLOW NOTIFICATIONS") { if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else buildSetupScreen() }
+        val allDone = locationDone && backgroundDone && silentDone && notificationsDone
+        page.addView(actionButton("FINISH SETUP  →") {
+            val ready = prefs.getString("lat", null) != null && hasForegroundLocation() && (Build.VERSION.SDK_INT < 29 || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) && getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted && (Build.VERSION.SDK_INT < 33 || ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+            if (ready) { prefs.edit().putBoolean("setup_complete", true).apply(); buildHomeScreen() } else { Toast.makeText(this, "Please complete all four steps first.", Toast.LENGTH_LONG).show(); buildSetupScreen() }
+        }.apply { isEnabled = allDone; alpha = if (allDone) 1f else 0.55f }, full().apply { topMargin = dp(8) })
+        setContentView(ScrollView(this).apply { isFillViewport = true; addView(page) })
     }
 
     private fun buildHomeScreen() {
@@ -446,7 +479,7 @@ class MainActivity : ComponentActivity() {
                         .putLong("location_saved_at", System.currentTimeMillis()).apply()
                     resolveAndSaveAddress(location.latitude, location.longitude) { if (settingsScreen) buildSettingsScreen() }
                     Toast.makeText(this, "Fresh GPS location saved (±" + location.accuracy.toInt() + " m).", Toast.LENGTH_LONG).show()
-                    if (settingsScreen) buildSettingsScreen()
+                    if (!prefs.getBoolean("setup_complete", false)) buildSetupScreen() else if (settingsScreen) buildSettingsScreen()
                 } else {
                     Toast.makeText(this, "GPS fix unavailable. Turn on Location and try again outdoors.", Toast.LENGTH_LONG).show()
                 }
