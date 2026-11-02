@@ -401,10 +401,16 @@ class MainActivity : ComponentActivity() {
             thread { ReminderWorker.speak(this, spoken) }
         }, full())
 
-        page.addView(label("HOME DETECTION RADIUS"))
+        page.addView(label("HOME ARRIVAL ZONE"))
+        page.addView(TextView(this).apply {
+            text = "Choose how close you must be to your saved home entrance / parking point before the phone changes mode. Smaller zones are more precise but GPS may fluctuate."
+            textSize = 12f
+            setTextColor(0xFF737B74.toInt())
+            setPadding(0, 0, 0, dp(8))
+        }, full())
         radiusSpinner = spinner(
-            listOf("100 metres", "150 metres", "200 metres", "300 metres"),
-            listOf(100, 150, 200, 300).indexOf(prefs.getInt("radius", 150)).coerceAtLeast(0)
+            listOf("25 metres — very close to entrance", "40 metres — close", "60 metres — nearby", "100 metres — wider area"),
+            listOf(25, 40, 60, 100).indexOf(prefs.getInt("radius", 30)).let { if (it < 0) 0 else it }
         )
         page.addView(radiusSpinner, full())
         page.addView(actionButton("SAVE SETTINGS") {
@@ -465,7 +471,7 @@ class MainActivity : ComponentActivity() {
     }
     private fun saveSettings() {
         val minutes = listOf(15, 20, 30, 45, 60)[intervalSpinner.selectedItemPosition]
-        val metres = listOf(100, 150, 200, 300)[radiusSpinner.selectedItemPosition]
+        val metres = listOf(25, 40, 60, 100)[radiusSpinner.selectedItemPosition]
         prefs.edit()
             .putString("name", nameField.text.toString().trim().ifBlank { "User" })
             .putString("message", messageField.text.toString().trim().ifBlank { "Aapka phone Silent Mode mein hai." })
@@ -576,7 +582,7 @@ class MainActivity : ComponentActivity() {
         }
         val fence = Geofence.Builder()
             .setRequestId("SHANTI_HOME")
-            .setCircularRegion(lat, lng, prefs.getInt("radius", 150).toFloat())
+            .setCircularRegion(lat, lng, prefs.getInt("radius", 30).toFloat())
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
             .setLoiteringDelay(60_000)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
