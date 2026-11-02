@@ -76,6 +76,29 @@ class MainActivity : ComponentActivity() {
             gravity = Gravity.CENTER
             setTextColor(0xFF777E78.toInt())
         }, full())
+        val brandLockup = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(7), 0, 0)
+        }
+        brandLockup.addView(TextView(this).apply {
+            text = "EZFLEXZ"
+            textSize = 11f
+            letterSpacing = .24f
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setTextColor(0xFF707A8C.toInt())
+        }, LinearLayout.LayoutParams(-2, -2))
+        brandLockup.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xFF246BFE.toInt())
+            }
+            elevation = dp(2).toFloat()
+        }, LinearLayout.LayoutParams(dp(7), dp(7)).apply {
+            leftMargin = dp(6)
+            gravity = Gravity.CENTER_VERTICAL
+        })
+        page.addView(brandLockup, full())
 
         val controlCard = card()
         controlCard.addView(TextView(this).apply {
