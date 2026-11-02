@@ -46,6 +46,8 @@ class FocusAppMonitorService : AccessibilityService() {
         val packages = p.getStringSet("packages", emptySet()) ?: emptySet()
         val existingUntil = p.getLong("session_until", 0L)
         if (existingUntil > 0L && now >= existingUntil) { finishSession(); return }
+        // A configured shift boundary always ends an active session and restores its saved volume.
+        if (existingUntil > 0L && !insideSchedule(p)) { finishSession(); return }
         if (packages.isEmpty() || (existingUntil == 0L && !insideSchedule(p))) return
         val root = rootInActiveWindow ?: return
         val current = root.packageName?.toString() ?: return
