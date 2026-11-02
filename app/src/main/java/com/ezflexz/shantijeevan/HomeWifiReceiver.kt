@@ -18,6 +18,11 @@ class HomeWifiReceiver : BroadcastReceiver() {
         if (!prefs.getBoolean("active", false) || !prefs.getBoolean("wifi_fallback_enabled", false)) return
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
         if (locationManager.isLocationEnabled) return
+        val networkInfo = intent.getParcelableExtra<android.net.NetworkInfo>(WifiManager.EXTRA_NETWORK_INFO)
+        if (networkInfo != null && !networkInfo.isConnected) {
+            if (prefs.getBoolean("inside_home", false)) leaveHome(context)
+            return
+        }
         evaluate(context)
     }
 
