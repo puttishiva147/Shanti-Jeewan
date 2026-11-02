@@ -132,11 +132,15 @@ class MainActivity : Activity() {
             setTextColor(0xFF7A8292.toInt())
             setPadding(0, 22, 0, 2)
         }, full())
+        page.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ezflexz_mark)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }, LinearLayout.LayoutParams(64, 64).apply { gravity = Gravity.CENTER })
         page.addView(TextView(this).apply {
-            text = "EZFLEXZ  •"
+            text = "EZFLEXZ"
             gravity = Gravity.CENTER
-            textSize = 17f
-            letterSpacing = .22f
+            textSize = 14f
+            letterSpacing = .28f
             setTextColor(0xFF111827.toInt())
         }, full())
         setContentView(ScrollView(this).apply { addView(page) })
