@@ -32,7 +32,10 @@ class FocusAppMonitorService : AccessibilityService() {
         val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
         if (!p.getBoolean("enabled", false)) { finishSession(); return }
         val packages = p.getStringSet("packages", emptySet()) ?: emptySet()
-        if (packages.isEmpty() || !insideSchedule(p)) return
+        val now = System.currentTimeMillis()
+        val existingUntil = p.getLong("session_until", 0L)
+        if (existingUntil > 0L && now >= existingUntil) { finishSession(); return }
+        if (packages.isEmpty() || (existingUntil == 0L && !insideSchedule(p))) return
         val root = rootInActiveWindow ?: return
         val current = root.packageName?.toString() ?: return
         if (current == packageName || !packages.contains(current)) {
@@ -40,7 +43,6 @@ class FocusAppMonitorService : AccessibilityService() {
             return
         }
 
-        val now = System.currentTimeMillis()
         var until = p.getLong("session_until", 0L)
         if (until == 0L) {
             until = now + 45L * 60L * 1000L
