@@ -78,7 +78,12 @@ class HomeWifiReceiver : BroadcastReceiver() {
             // Prefer the saved router/LAN fingerprint. It remains readable on many
             // Android builds even when Location is OFF and SSID is privacy-redacted.
             val connectedHome = if (savedFingerprint != null && currentFingerprint != null) {
-                currentFingerprint == savedFingerprint
+                val savedGateway = savedFingerprint.substringBefore("|dns=")
+                val currentGateway = currentFingerprint.substringBefore("|dns=")
+                val savedDns = savedFingerprint.substringAfter("|dns=", "")
+                val currentDns = currentFingerprint.substringAfter("|dns=", "")
+                savedGateway == currentGateway &&
+                    (savedDns.isBlank() || currentDns.isBlank() || savedDns == currentDns)
             } else {
                 homeSsid != null && ssid == homeSsid
             }
