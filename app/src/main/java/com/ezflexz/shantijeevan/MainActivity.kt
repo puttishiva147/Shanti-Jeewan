@@ -216,6 +216,10 @@ class MainActivity : ComponentActivity() {
         controlCard.addView(status, full())
         page.addView(controlCard, full().apply { topMargin = dp(34) })
 
+        page.addView(actionButton("FOCUS & REST REMINDER  •  BETA") {
+            startActivity(Intent(this, FocusReminderActivity::class.java))
+        }, full().apply { topMargin = dp(22) })
+
         page.addView(actionButton("SETTINGS") { buildSettingsScreen() },
             full().apply { topMargin = dp(22) })
         page.addView(TextView(this).apply {
