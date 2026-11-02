@@ -84,7 +84,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : Worker(contex
                         override fun onError(utteranceId: String?) { finished.countDown() }
                         override fun onError(utteranceId: String?, errorCode: Int) { finished.countDown() }
                     })
-                    val options = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0.45f) }
+                    val savedVolume = context.getSharedPreferences("shanti", Context.MODE_PRIVATE).getInt("voice_volume", 45).coerceIn(0, 100) / 100f
+                    val options = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, savedVolume) }
                     engine.speak(text, TextToSpeech.QUEUE_FLUSH, options, "shanti-reminder")
                 } else finished.countDown()
             }
