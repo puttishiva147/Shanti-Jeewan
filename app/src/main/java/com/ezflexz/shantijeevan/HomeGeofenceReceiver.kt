@@ -5,7 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.work.*
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
@@ -23,11 +25,13 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
         when (event.geofenceTransition) {
             Geofence.GEOFENCE_TRANSITION_ENTER -> {
                 if (policy.isNotificationPolicyAccessGranted) {
-                    if (audio.ringerMode != AudioManager.RINGER_MODE_SILENT)
+                    if (!prefs.getBoolean("inside_home", false)) {
                         prefs.edit().putInt("previous_mode", audio.ringerMode).apply()
+                    }
                     audio.ringerMode = AudioManager.RINGER_MODE_SILENT
                 }
-                val minutes = prefs.getInt("interval", 20).toLong()
+                prefs.edit().putBoolean("inside_home", true).apply()
+                val minutes = prefs.getInt("interval", 20).toLong().coerceAtLeast(15)
                 val reminder = PeriodicWorkRequestBuilder<ReminderWorker>(minutes, TimeUnit.MINUTES)
                     .setInitialDelay(minutes, TimeUnit.MINUTES).build()
                 WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -36,9 +40,10 @@ class HomeGeofenceReceiver : BroadcastReceiver() {
             }
             Geofence.GEOFENCE_TRANSITION_EXIT -> {
                 WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
-                if (policy.isNotificationPolicyAccessGranted) {
+                if (policy.isNotificationPolicyAccessGranted && prefs.getBoolean("inside_home", false)) {
                     audio.ringerMode = prefs.getInt("previous_mode", AudioManager.RINGER_MODE_NORMAL)
                 }
+                prefs.edit().putBoolean("inside_home", false).apply()
             }
         }
     }
@@ -50,7 +55,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : Worker(contex
     private val appContext = context.applicationContext
     override fun doWork(): Result {
         val prefs = appContext.getSharedPreferences("shanti", Context.MODE_PRIVATE)
-        if (!prefs.getBoolean("active", false)) return Result.success()
+        if (!prefs.getBoolean("active", false) || !prefs.getBoolean("inside_home", false)) return Result.success()
         val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val policy = appContext.getSystemService(NotificationManager::class.java)
         if (policy.isNotificationPolicyAccessGranted && audio.ringerMode != AudioManager.RINGER_MODE_SILENT)
@@ -60,17 +65,25 @@ class ReminderWorker(context: Context, params: WorkerParameters) : Worker(contex
     }
     companion object {
         fun speak(context: Context, text: String) {
-            val ready = CountDownLatch(1)
+            val finished = CountDownLatch(1)
             var tts: TextToSpeech? = null
             tts = TextToSpeech(context.applicationContext) { state ->
                 if (state == TextToSpeech.SUCCESS) {
-                    tts?.language = Locale("hi", "IN")
-                    tts?.setSpeechRate(0.9f)
-                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "shanti-reminder")
-                }
-                ready.countDown()
+                    val engine = tts ?: run { finished.countDown(); return@TextToSpeech }
+                    engine.language = Locale("hi", "IN")
+                    engine.setSpeechRate(0.88f)
+                    engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) {}
+                        override fun onDone(utteranceId: String?) { finished.countDown() }
+                        @Deprecated("Deprecated in Java")
+                        override fun onError(utteranceId: String?) { finished.countDown() }
+                        override fun onError(utteranceId: String?, errorCode: Int) { finished.countDown() }
+                    })
+                    val options = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0.45f) }
+                    engine.speak(text, TextToSpeech.QUEUE_FLUSH, options, "shanti-reminder")
+                } else finished.countDown()
             }
-            try { ready.await(7, TimeUnit.SECONDS); Thread.sleep(2500) } catch (_: InterruptedException) {}
+            try { finished.await(25, TimeUnit.SECONDS) } catch (_: InterruptedException) {}
             tts?.stop()
             tts?.shutdown()
         }
