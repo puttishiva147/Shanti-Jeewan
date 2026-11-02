@@ -1,0 +1,94 @@
+package com.ezflexz.shantijeevan
+
+import android.accessibilityservice.AccessibilityService
+import android.content.Intent
+import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
+import android.view.accessibility.AccessibilityEvent
+import java.util.Calendar
+
+class FocusAppMonitorService : AccessibilityService() {
+    private val handler = Handler(Looper.getMainLooper())
+    private var lastBlockedPackage = ""
+    private val loop = object : Runnable {
+        override fun run() {
+            evaluateForeground()
+            handler.postDelayed(this, 1000L)
+        }
+    }
+
+    override fun onServiceConnected() { handler.post(loop) }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) { evaluateForeground() }
+    override fun onInterrupt() {}
+
+    override fun onDestroy() {
+        handler.removeCallbacks(loop)
+        restoreCallVolume()
+        super.onDestroy()
+    }
+
+    private fun evaluateForeground() {
+        val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
+        if (!p.getBoolean("enabled", false)) { finishSession(); return }
+        val packages = p.getStringSet("packages", emptySet()) ?: emptySet()
+        if (packages.isEmpty() || !insideSchedule(p)) return
+        val root = rootInActiveWindow ?: return
+        val current = root.packageName?.toString() ?: return
+        if (current == packageName || !packages.contains(current)) {
+            lastBlockedPackage = ""
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        var until = p.getLong("session_until", 0L)
+        if (until == 0L) {
+            until = now + 45L * 60L * 1000L
+            p.edit().putLong("session_until", until).putLong("break_until", 0L).apply()
+            lowerCallVolume()
+        }
+        if (now >= until) { finishSession(); return }
+        val breakUntil = p.getLong("break_until", 0L)
+        if (now < breakUntil) return
+        if (lastBlockedPackage != current) {
+            lastBlockedPackage = current
+            val i = Intent(this, FocusBlockerActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            startActivity(i)
+        }
+    }
+
+    private fun insideSchedule(p: android.content.SharedPreferences): Boolean {
+        val c = Calendar.getInstance()
+        val now = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
+        val start = p.getInt("start_minute", 900)
+        val end = p.getInt("end_minute", 1020)
+        return if (start <= end) now in start until end else now >= start || now < end
+    }
+
+    private fun lowerCallVolume() {
+        val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
+        val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_RING)
+        if (!p.getBoolean("volume_saved", false)) {
+            p.edit().putInt("previous_ring_volume", audio.getStreamVolume(AudioManager.STREAM_RING))
+                .putBoolean("volume_saved", true).apply()
+        }
+        audio.setStreamVolume(AudioManager.STREAM_RING, (max * 0.30f).toInt().coerceAtLeast(1), 0)
+    }
+
+    private fun restoreCallVolume() {
+        val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
+        if (!p.getBoolean("volume_saved", false)) return
+        val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+        audio.setStreamVolume(AudioManager.STREAM_RING, p.getInt("previous_ring_volume", audio.getStreamMaxVolume(AudioManager.STREAM_RING)), 0)
+        p.edit().remove("volume_saved").remove("previous_ring_volume").apply()
+    }
+
+    private fun finishSession() {
+        val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
+        p.edit().remove("session_until").remove("break_until").apply()
+        restoreCallVolume()
+        lastBlockedPackage = ""
+    }
+}
