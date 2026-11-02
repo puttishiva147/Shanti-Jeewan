@@ -54,7 +54,7 @@ class FocusBlockerActivity : Activity() {
         }
         repeatTask = object : Runnable {
             override fun run() {
-                if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+                if (!isFinishing) {
                     tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "focus-repeat")
                     handler.postDelayed(this, 60_000L)
                 }
