@@ -17,6 +17,16 @@
             </intent-filter>
         </activity>
         <receiver android:name=".HomeGeofenceReceiver" android:exported="false"/>
+        <service
+            android:name=".ShantiQuickTileService"
+            android:label="Shanti Jeewan"
+            android:icon="@drawable/ic_shanti"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE"/>
+            </intent-filter>
+        </service>
         <receiver android:name=".LocationModeReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
                 <action android:name="android.location.MODE_CHANGED"/>
