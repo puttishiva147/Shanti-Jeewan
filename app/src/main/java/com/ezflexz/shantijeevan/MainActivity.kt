@@ -10,6 +10,7 @@ import java.util.Locale
 import kotlin.concurrent.thread
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -32,6 +33,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var radiusSpinner: Spinner
     private lateinit var voiceVolumeSeek: SeekBar
     private var settingsScreen = false
+    private val nearbyWifiPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) saveConnectedHomeWifi()
+        else Toast.makeText(this, "Nearby Wi-Fi permission is needed to save your home network.", Toast.LENGTH_LONG).show()
+    }
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -294,6 +299,22 @@ class MainActivity : ComponentActivity() {
             else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }, full())
 
+        page.addView(label("HOME WI-FI FALLBACK"))
+        val savedWifi = prefs.getString("home_wifi_ssid", null)
+        page.addView(TextView(this).apply {
+            text = if (savedWifi.isNullOrBlank()) "Not configured. Connect to your home Wi-Fi, then save it here. This is used when Location is OFF."
+                else "Saved home Wi-Fi: $savedWifi"
+            textSize = 13f
+            setTextColor(0xFF626B63.toInt())
+            setPadding(0, 0, 0, dp(8))
+        }, full())
+        page.addView(actionButton("SAVE CURRENT WI-FI AS HOME") { saveConnectedHomeWifi() }, full())
+        page.addView(actionButton("CLEAR SAVED HOME WI-FI") {
+            prefs.edit().remove("home_wifi_ssid").putBoolean("wifi_fallback_enabled", false).apply()
+            Toast.makeText(this, "Saved home Wi-Fi cleared.", Toast.LENGTH_SHORT).show()
+            buildSettingsScreen()
+        }, full())
+
         page.addView(label("CUSTOM HOME LOCATION"))
         page.addView(TextView(this).apply {
             text = "Set a different home point manually using GPS coordinates. This works even when you are not physically at that location."
@@ -432,6 +453,28 @@ class MainActivity : ComponentActivity() {
             isFillViewport = true
             addView(page)
         })
+    }
+
+    private fun saveConnectedHomeWifi() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
+            nearbyWifiPermission.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+            return
+        }
+        try {
+            val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+            @Suppress("DEPRECATION")
+            val ssid = wifi.connectionInfo?.ssid?.trim('"')
+            if (ssid.isNullOrBlank() || ssid == "<unknown ssid>") {
+                Toast.makeText(this, "Wi-Fi name is unavailable. Connect to your home Wi-Fi and ensure Android allows nearby Wi-Fi access.", Toast.LENGTH_LONG).show()
+                return
+            }
+            prefs.edit().putString("home_wifi_ssid", ssid).putBoolean("wifi_fallback_enabled", true).apply()
+            Toast.makeText(this, "Home Wi-Fi saved: $ssid", Toast.LENGTH_LONG).show()
+            buildSettingsScreen()
+        } catch (_: SecurityException) {
+            Toast.makeText(this, "Android blocked Wi-Fi name access. Check Nearby devices and Location permissions.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun openBackgroundLocationSettings() {
