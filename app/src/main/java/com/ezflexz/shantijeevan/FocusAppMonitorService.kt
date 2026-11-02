@@ -3,6 +3,7 @@ package com.ezflexz.shantijeevan
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.media.AudioManager
+import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
@@ -26,13 +27,24 @@ class FocusAppMonitorService : AccessibilityService() {
     override fun onDestroy() {
         handler.removeCallbacks(loop)
         restoreCallVolume()
+        restoreScheduledBrightness()
         super.onDestroy()
     }
 
     private fun evaluateForeground() {
         val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
-        if (!p.getBoolean("enabled", false)) { finishSession(); return }
+        if (!p.getBoolean("enabled", false)) { finishSession(); restoreScheduledBrightness(); return }
         val now = System.currentTimeMillis()
+        val inShift = insideSchedule(p)
+        if (inShift) applyScheduledBrightness(p) else restoreScheduledBrightness()
+        if (inShift) {
+            val snoozeUntil = p.getLong("reminder_snooze_until", 0L)
+            val nextReminder = p.getLong("next_device_reminder_at", 0L)
+            if (now >= snoozeUntil && (nextReminder == 0L || now >= nextReminder)) {
+                p.edit().putLong("next_device_reminder_at", now + 15L * 60L * 1000L).apply()
+                showReminder("device")
+            }
+        } else p.edit().remove("next_device_reminder_at").remove("reminder_snooze_until").apply()
 
         if (p.getBoolean("periodic_checkin_enabled", false)) {
             val next = p.getLong("next_checkin_at", now + 45L * 60L * 1000L)
@@ -48,7 +60,7 @@ class FocusAppMonitorService : AccessibilityService() {
         if (existingUntil > 0L && now >= existingUntil) { finishSession(); return }
         // A configured shift boundary always ends an active session and restores its saved volume.
         if (existingUntil > 0L && !insideSchedule(p)) { finishSession(); return }
-        if (packages.isEmpty() || (existingUntil == 0L && !insideSchedule(p))) return
+        if (packages.isEmpty() || !inShift) return
         val root = rootInActiveWindow ?: return
         val current = root.packageName?.toString() ?: return
         if (current == packageName || !packages.contains(current)) { lastBlockedPackage = ""; return }
@@ -93,6 +105,28 @@ class FocusAppMonitorService : AccessibilityService() {
     private fun inTimeRange(now: Int, start: Int, end: Int): Boolean {
         if (start == end) return false
         return if (start < end) now in start until end else now >= start || now < end
+    }
+
+    private fun applyScheduledBrightness(p: android.content.SharedPreferences) {
+        if (!Settings.System.canWrite(this)) return
+        try {
+            if (!p.getBoolean("brightness_saved", false)) {
+                val previous = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128)
+                p.edit().putInt("previous_screen_brightness", previous).putBoolean("brightness_saved", true).apply()
+            }
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 35)
+        } catch (_: Throwable) {}
+    }
+
+    private fun restoreScheduledBrightness() {
+        val p = getSharedPreferences("focus_beta", MODE_PRIVATE)
+        if (!p.getBoolean("brightness_saved", false) || !Settings.System.canWrite(this)) return
+        try {
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS,
+                p.getInt("previous_screen_brightness", 128))
+            p.edit().remove("brightness_saved").remove("previous_screen_brightness").apply()
+        } catch (_: Throwable) {}
     }
 
     private fun lowerCallVolume() {
