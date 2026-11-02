@@ -188,9 +188,8 @@ class MainActivity : ComponentActivity() {
             if (hasForegroundLocation()) saveCurrentLocation()
             else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }, full())
-        page.addView(actionButton("BACKGROUND LOCATION PERMISSION") {
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-            Toast.makeText(this, "Choose Allow all the time for Location.", Toast.LENGTH_LONG).show()
+        page.addView(actionButton("GRANT BACKGROUND LOCATION") {
+            openBackgroundLocationSettings()
         }, full())
         page.addView(label("SILENT MODE"))
         page.addView(actionButton("ALLOW SILENT MODE ACCESS") {
@@ -229,6 +228,11 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Settings saved.", Toast.LENGTH_SHORT).show()
             buildSettingsScreen()
         }, full().apply { topMargin = dp(22) })
+    }
+
+    private fun openBackgroundLocationSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        startActivity(intent)
     }
 
     private fun pauseAutomation() {
@@ -313,7 +317,8 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 29 &&
             ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             activeSwitch.isChecked = false
-            Toast.makeText(this, "Allow background location from Settings first.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Select Location permission > Allow all the time, then turn ON again.", Toast.LENGTH_LONG).show()
+            openBackgroundLocationSettings()
             return
         }
         val manager = getSystemService(NotificationManager::class.java)
@@ -358,8 +363,12 @@ class MainActivity : ComponentActivity() {
         if (!::status.isInitialized) return
         val saved = prefs.getString("lat", null) != null
         val active = prefs.getBoolean("active", false)
+        val backgroundAllowed = Build.VERSION.SDK_INT < 29 ||
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val silentAllowed = getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted
         status.text = (if (active) "Automation is active" else "Automation is off") + "\n" +
-            (if (saved) "Home location saved" else "Home location not set")
+            (if (saved) "Home location saved" else "Home location not set") + "\n" +
+            "Background location: ${if (backgroundAllowed) "Allowed" else "Needed"}  •  Silent access: ${if (silentAllowed) "Allowed" else "Needed"}"
         if (::activeSwitch.isInitialized && activeSwitch.isChecked != active) {
             activeSwitch.setOnCheckedChangeListener(null)
             activeSwitch.isChecked = active
