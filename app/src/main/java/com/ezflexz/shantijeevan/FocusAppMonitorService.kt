@@ -74,10 +74,7 @@ class FocusAppMonitorService : AccessibilityService() {
         if (now >= until) { finishSession(); return }
         val breakUntil = p.getLong("break_until", 0L)
         if (now < breakUntil) { lastBlockedPackage = ""; return }
-        if (lastBlockedPackage != current) {
-            lastBlockedPackage = current
-            showReminder("app")
-        }
+        if (lastBlockedPackage != current) { lastBlockedPackage = current }
     }
 
     private fun showReminder(reason: String) {
