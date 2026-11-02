@@ -17,6 +17,10 @@ class FocusReminderActivity : ComponentActivity() {
     private val selectedPackages = linkedSetOf<String>()
     private var startMinute = 900
     private var endMinute = 1020
+    private var shift1Start = 900
+    private var shift1End = 960
+    private var shift2Start = 0
+    private var shift2End = 240
     private lateinit var appButton: Button
     private lateinit var accessStatus: TextView
 
@@ -31,6 +35,10 @@ class FocusReminderActivity : ComponentActivity() {
         selectedPackages.addAll(prefs.getStringSet("packages", emptySet()) ?: emptySet())
         startMinute = prefs.getInt("start_minute", 900).coerceIn(0, 1439)
         endMinute = prefs.getInt("end_minute", 1020).coerceIn(0, 1439)
+        shift1Start = prefs.getInt("shift1_start", 900).coerceIn(0, 1439)
+        shift1End = prefs.getInt("shift1_end", 960).coerceIn(0, 1439)
+        shift2Start = prefs.getInt("shift2_start", 0).coerceIn(0, 1439)
+        shift2End = prefs.getInt("shift2_end", 240).coerceIn(0, 1439)
         render()
     }
 
@@ -72,6 +80,38 @@ class FocusReminderActivity : ComponentActivity() {
         times.addView(timeButton("END", endMinute, false), LinearLayout.LayoutParams(0, dp(58), 1f).apply { marginStart = dp(8) })
         schedule.addView(times)
         page.addView(schedule)
+
+        val betaShifts = card()
+        betaShifts.addView(sectionTitle("BETA FEATURES"))
+        betaShifts.addView(TextView(this).apply {
+            text = "Multiple focus shifts"
+            textSize = 16f; typeface = Typeface.DEFAULT_BOLD; setTextColor(ink)
+            setPadding(0, 0, 0, dp(4))
+        })
+        betaShifts.addView(label("Set two separate active periods. Focus automatically pauses outside both shifts. Your existing Daily Schedule stays unchanged when this beta option is OFF."))
+        betaShifts.addView(Switch(this).apply {
+            text = "Enable multiple shifts (Beta)"
+            isChecked = prefs.getBoolean("multi_shift_enabled", false)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("multi_shift_enabled", checked).apply()
+                Toast.makeText(this@FocusReminderActivity, if (checked) "Multiple shifts enabled" else "Using existing Daily Schedule", Toast.LENGTH_SHORT).show()
+            }
+        })
+        betaShifts.addView(label("SHIFT 1"))
+        val shift1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        shift1.addView(shiftTimeButton("START", shift1Start, 1, true), LinearLayout.LayoutParams(0, dp(54), 1f).apply { marginEnd = dp(6) })
+        shift1.addView(shiftTimeButton("END", shift1End, 1, false), LinearLayout.LayoutParams(0, dp(54), 1f).apply { marginStart = dp(6) })
+        betaShifts.addView(shift1)
+        betaShifts.addView(label("SHIFT 2"))
+        val shift2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        shift2.addView(shiftTimeButton("START", shift2Start, 2, true), LinearLayout.LayoutParams(0, dp(54), 1f).apply { marginEnd = dp(6) })
+        shift2.addView(shiftTimeButton("END", shift2End, 2, false), LinearLayout.LayoutParams(0, dp(54), 1f).apply { marginStart = dp(6) })
+        betaShifts.addView(shift2)
+        betaShifts.addView(TextView(this).apply {
+            text = "Example: 3:00 PM–4:00 PM, then 12:00 AM–4:00 AM."
+            textSize = 11f; setTextColor(muted); setPadding(0, dp(8), 0, 0)
+        })
+        page.addView(betaShifts)
 
         val apps = card()
         apps.addView(sectionTitle("APPS TO FOCUS ON"))
@@ -234,4 +274,27 @@ class FocusReminderActivity : ComponentActivity() {
 
     private fun time(value: Int) = String.format("%02d:%02d", value / 60, value % 60)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    private fun shiftTimeButton(caption: String, value: Int, shift: Int, isStart: Boolean) = Button(this).apply {
+        isAllCaps = false; textSize = 12f; setTextColor(accent)
+        text = "$caption   ${time(value)}"
+        setOnClickListener {
+            TimePickerDialog(this@FocusReminderActivity, { _, h, m ->
+                val chosen = h * 60 + m
+                when (shift) {
+                    1 -> if (isStart) shift1Start = chosen else shift1End = chosen
+                    2 -> if (isStart) shift2Start = chosen else shift2End = chosen
+                }
+                val edit = prefs.edit()
+                when (shift) {
+                    1 -> edit.putInt(if (isStart) "shift1_start" else "shift1_end", chosen)
+                    2 -> edit.putInt(if (isStart) "shift2_start" else "shift2_end", chosen)
+                }
+                edit.apply()
+                render()
+            }, value / 60, value % 60, false).show()
+        }
+    }
+
+
 }
