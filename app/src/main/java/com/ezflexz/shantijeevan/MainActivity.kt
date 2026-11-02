@@ -11,12 +11,13 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.widget.*
+import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.*
 import java.util.Locale
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private val prefs by lazy { getSharedPreferences("shanti", MODE_PRIVATE) }
     private lateinit var status: TextView
     private lateinit var nameField: EditText
