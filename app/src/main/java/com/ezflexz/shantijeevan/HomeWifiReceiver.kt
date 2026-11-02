@@ -137,7 +137,7 @@ class HomeWifiReceiver : BroadcastReceiver() {
                     NotificationCompat.Builder(context, channel)
                         .setSmallIcon(R.drawable.ic_shanti)
                         .setContentTitle("Home Wi-Fi detected — $label ON")
-                        .setContentText("Location is OFF. Home Wi-Fi fallback applied your selected phone mode.")
+                        .setContentText("Saved home Wi-Fi connected. Your selected phone mode was applied.")
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
                         .setAutoCancel(true).build())
             } catch (_: SecurityException) {}
@@ -151,8 +151,10 @@ class HomeWifiReceiver : BroadcastReceiver() {
                 .putBoolean("inside_home", gpsStillInside)
                 .putString("last_event", "Home Wi-Fi disconnected — previous phone mode restored")
                 .putLong("last_event_time", System.currentTimeMillis()).apply()
-            androidx.work.WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
-            androidx.work.WorkManager.getInstance(context).cancelUniqueWork("home-reminder-first")
+            if (!gpsStillInside) {
+                androidx.work.WorkManager.getInstance(context).cancelUniqueWork("home-reminder")
+                androidx.work.WorkManager.getInstance(context).cancelUniqueWork("home-reminder-first")
+            }
         }
     }
 }
