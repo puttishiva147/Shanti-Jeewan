@@ -10,14 +10,14 @@
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation"/>
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
-    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>\n    <uses-permission android:name="android.permission.READ_CONTACTS"/>\n    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>\n    <uses-permission android:name="android.permission.RECEIVE_SMS"/>\n    <uses-permission android:name="android.permission.READ_SMS"/>
     <application
         android:allowBackup="true"
         android:label="Shanti Jeewan"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity" android:exported="true"/>
+        <activity android:name=".MainActivity" android:exported="true"/>\n        <activity android:name=".SmartAlertsActivity" android:exported="false"/>\n        <service android:name=".SmartAlertNotificationListener" android:label="Shanti Jeewan Smart Alerts" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true"><intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter></service>\n        <receiver android:name=".SmartAlertCallReceiver" android:enabled="true" android:exported="true"><intent-filter><action android:name="android.intent.action.PHONE_STATE"/></intent-filter></receiver>\n        <receiver android:name=".SmartAlertSmsReceiver" android:enabled="true" android:exported="true" android:permission="android.permission.BROADCAST_SMS"><intent-filter android:priority="900"><action android:name="android.provider.Telephony.SMS_RECEIVED"/></intent-filter></receiver>
         <activity-alias android:name=".Launcher0" android:targetActivity=".MainActivity" android:label="Shanti" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:enabled="true" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity-alias>
         <activity-alias android:name=".Launcher1" android:targetActivity=".MainActivity" android:label="YouTube" android:icon="@android:drawable/ic_media_play" android:roundIcon="@android:drawable/ic_media_play" android:enabled="false" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity-alias>
         <activity-alias android:name=".Launcher2" android:targetActivity=".MainActivity" android:label="Instagram" android:icon="@android:drawable/ic_menu_camera" android:roundIcon="@android:drawable/ic_menu_camera" android:enabled="false" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity-alias>
