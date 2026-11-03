@@ -19,6 +19,9 @@ class HomeWifiReceiver : BroadcastReceiver() {
         if (intent.action != WifiManager.NETWORK_STATE_CHANGED_ACTION &&
             intent.action != WifiManager.WIFI_STATE_CHANGED_ACTION &&
             intent.action != "android.net.conn.CONNECTIVITY_CHANGE") return
+        // Always refresh combined device state, even when home-Wi-Fi fallback is disabled.
+        // Read live system state rather than trusting possibly stale broadcast extras.
+        InstantDetectionState.sync(context)
         val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("active", false) || !prefs.getBoolean("wifi_fallback_enabled", false)) return
         // Inspect the currently active networks; disconnect broadcasts may be stale.
