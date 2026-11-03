@@ -753,6 +753,10 @@ class MainActivity : ComponentActivity() {
     }
     private fun refreshStatus() {
         if (!::status.isInitialized) return
+        InstantDetectionState.sync(this)
+        val instantMode = prefs.getBoolean("instant_detection_mode", false)
+        val wifiState = prefs.getBoolean("instant_detection_wifi_on", false)
+        val locationState = prefs.getBoolean("instant_detection_location_on", false)
         val saved = prefs.getString("lat", null) != null
         val active = prefs.getBoolean("active", false)
         val backgroundAllowed = Build.VERSION.SDK_INT < 29 ||
@@ -762,6 +766,7 @@ class MainActivity : ComponentActivity() {
         val eventTime = prefs.getLong("last_event_time", 0L)
         val eventStamp = if (eventTime > 0L) java.text.DateFormat.getTimeInstance().format(java.util.Date(eventTime)) else "—"
         status.text = (if (active) "Geofence registered" else "Automation is off") + "\n" +
+            "Instant Detection: ${if (instantMode) "ON" else "OFF"}  •  Wi-Fi: ${if (wifiState) "ON" else "OFF"}  •  Location: ${if (locationState) "ON" else "OFF"}\n" +
             (if (saved) "Home location saved" else "Home location not set") + "\n" +
             "Background location: ${if (backgroundAllowed) "Allowed" else "Needed"}  •  Silent access: ${if (silentAllowed) "Allowed" else "Needed"}" +
             "\nLast event: $lastEvent ($eventStamp)\n"
