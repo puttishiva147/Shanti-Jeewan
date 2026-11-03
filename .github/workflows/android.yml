@@ -1,7 +1,7 @@
 name: Android CI
 on:
   push:
-    branches: [ "main", "beta-focus-reminder" ]
+    branches: [ "main", "beta-focus-reminder", "smart-contact-alerts" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
