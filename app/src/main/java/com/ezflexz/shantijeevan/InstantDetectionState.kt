@@ -28,27 +28,25 @@ object InstantDetectionState {
 
         val enabled = wifiOn && locationOn
         val prefs = app.getSharedPreferences("shanti", Context.MODE_PRIVATE)
-        val previous = prefs.getBoolean("instant_detection_mode", false)
-        if (previous != enabled) {
-            prefs.edit()
-                .putBoolean("instant_detection_mode", enabled)
-                .putBoolean("instant_detection_wifi_on", wifiOn)
-                .putBoolean("instant_detection_location_on", locationOn)
-                .putLong("instant_detection_state_changed_at", System.currentTimeMillis())
-                .putString("instant_detection_state", when {
-                    enabled -> "Instant Detection active — Wi-Fi and Location are ON"
-                    !wifiOn && !locationOn -> "Instant Detection paused — Wi-Fi and Location are OFF"
-                    !wifiOn -> "Instant Detection paused — Wi-Fi is OFF"
-                    else -> "Instant Detection paused — Location is OFF"
-                })
-                .apply()
-        } else {
-            // Keep the individual signal snapshot fresh even if the combined state is unchanged.
-            prefs.edit()
-                .putBoolean("instant_detection_wifi_on", wifiOn)
-                .putBoolean("instant_detection_location_on", locationOn)
-                .apply()
+        val previousMode = prefs.getBoolean("instant_detection_mode", false)
+        val previousWifi = prefs.getBoolean("instant_detection_wifi_on", false)
+        val previousLocation = prefs.getBoolean("instant_detection_location_on", false)
+        val changed = previousMode != enabled || previousWifi != wifiOn || previousLocation != locationOn
+        val stateText = when {
+            enabled -> "Instant Detection active — Wi-Fi and Location are ON"
+            !wifiOn && !locationOn -> "Instant Detection paused — Wi-Fi and Location are OFF"
+            !wifiOn -> "Instant Detection paused — Wi-Fi is OFF"
+            else -> "Instant Detection paused — Location is OFF"
         }
+        // One atomic preference transaction prevents the UI and background receivers
+        // from observing a new combined mode alongside old individual signal values.
+        val editor = prefs.edit()
+            .putBoolean("instant_detection_mode", enabled)
+            .putBoolean("instant_detection_wifi_on", wifiOn)
+            .putBoolean("instant_detection_location_on", locationOn)
+            .putString("instant_detection_state", stateText)
+        if (changed) editor.putLong("instant_detection_state_changed_at", System.currentTimeMillis())
+        editor.commit()
         return enabled
     }
 }
