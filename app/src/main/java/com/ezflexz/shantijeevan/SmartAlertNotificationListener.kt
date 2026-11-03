@@ -8,7 +8,7 @@ class SmartAlertNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if(sbn==null||!SmartAlertEngine.enabled(this)||SmartAlertEngine.muted(this)) return
         val pkg=sbn.packageName ?: return
-        val isWhatsApp=pkg=="com.whatsapp"||pkg=="com.whatsapp.w4b"
+        val isWhatsApp=pkg=="com.whatsapp"||pkg=="com.whatsapp.w4b"\n        if(!isWhatsApp) return
         val extras=sbn.notification.extras
         val title=extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
         val text=extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
