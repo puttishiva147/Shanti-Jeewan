@@ -34,7 +34,7 @@ object SmartAlertEngine {
         if(tone) SmartAlertSound.play(context,0,ringtone)
         if(read) {
             val text=if(message.isBlank()) "Incoming call from $name" else "$name says: $message"
-            val tts=TextToSpeech(context) { status ->
+            lateinit var tts: TextToSpeech\n            tts=TextToSpeech(context) { status ->
                 if(status==TextToSpeech.SUCCESS) {
                     ttsLocale(tts)
                     tts.setSpeechRate(0.94f)
