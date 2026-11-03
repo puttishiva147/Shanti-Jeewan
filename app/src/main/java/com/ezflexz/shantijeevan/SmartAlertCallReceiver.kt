@@ -12,7 +12,7 @@ class SmartAlertCallReceiver : BroadcastReceiver() {
         if(state==TelephonyManager.EXTRA_STATE_RINGING) {
             val number=intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: return
             val p=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE)
-            if(SmartAlertEngine.selectedName(context,number)!=null) {
+            val now=System.currentTimeMillis()\n            if(SmartAlertEngine.selectedName(context,number)!=null && (p.getString("last_call_number","")!=number || now-p.getLong("last_call_at",0L)>30000L)) {\n                p.edit().putString("last_call_number",number).putLong("last_call_at",now).apply()
                 SmartAlertEngine.alert(context,number,"",p.getBoolean("call_announce",true),p.getBoolean("call_sound",true),true)
             }
         }
