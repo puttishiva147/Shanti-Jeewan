@@ -110,7 +110,7 @@ class SmartAlertsActivity : ComponentActivity() {
         val tones=arrayOf("Default","Soft Bell","Warm Chime","Quiet Pulse")
         val key=(if(isCall) "call_tone_" else "message_tone_")+number\n        val current=p.getString(key,"Default")
         android.app.AlertDialog.Builder(this).setTitle("$name sound").setSingleChoiceItems(tones,tones.indexOf(current).coerceAtLeast(0)) { d,which ->
-            p.edit().putString("tone_$number",tones[which]).apply()
+            p.edit().putString(key,tones[which]).apply()
             SmartAlertSound.preview(this,which); d.dismiss(); render()
         }.setNegativeButton("Cancel",null).show()
     }
