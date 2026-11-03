@@ -15,6 +15,8 @@ import com.google.android.gms.location.LocationServices
 class LocationModeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != LocationManager.MODE_CHANGED_ACTION) return
+        // Refresh the combined device state before automation-specific early returns.
+        InstantDetectionState.sync(context)
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val prefs = context.getSharedPreferences("shanti", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("active", false)) return
