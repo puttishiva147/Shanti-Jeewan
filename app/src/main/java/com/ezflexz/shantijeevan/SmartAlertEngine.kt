@@ -1,0 +1,48 @@
+package com.ezflexz.shantijeevan
+
+import android.content.Context
+import android.speech.tts.TextToSpeech
+import java.util.Calendar
+import java.util.Locale
+
+object SmartAlertEngine {
+    fun enabled(context: Context)=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE).getBoolean("enabled",false)
+    fun muted(context: Context):Boolean {
+        val p=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE)
+        if(!enabled(context)||p.getBoolean("muted",false)) return true
+        val start=p.getInt("quiet_start",-1); val end=p.getInt("quiet_end",-1)
+        if(start<0||end<0||start==end) return false
+        val c=Calendar.getInstance(); val now=c.get(Calendar.HOUR_OF_DAY)*60+c.get(Calendar.MINUTE)
+        return if(start<end) now in start until end else now>=start||now<end
+    }
+    fun selectedName(context:Context, identity:String):String? {
+        val p=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE)
+        if(!enabled(context)||identity.isBlank()) return null
+        val normalized=identity.filter { it.isDigit() || it=='+' }
+        val entries=p.getStringSet("contacts",emptySet()) ?: emptySet()
+        return entries.firstNotNullOfOrNull { item ->
+            val parts=item.split("|",limit=2); val number=parts.getOrElse(0){""}; val name=parts.getOrElse(1){number}
+            val match=if(normalized.length>=7) normalized.takeLast(10)==number.filter(Char::isDigit).takeLast(10)
+                else identity.contains(name,true)||name.contains(identity,true)
+            if(match) name else null
+        }
+    }
+    fun alert(context:Context, identity:String, message:String, read:Boolean, tone:Boolean, ringtone:Boolean=false) {
+        if(muted(context)) return
+        val name=selectedName(context,identity) ?: return
+        val p=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE)
+        if(tone) SmartAlertSound.play(context,0,ringtone)
+        if(read) {
+            val text=if(message.isBlank()) "Incoming call from $name" else "$name says: $message"
+            val tts=TextToSpeech(context) { status ->
+                if(status==TextToSpeech.SUCCESS) {
+                    ttsLocale(tts)
+                    tts.setSpeechRate(0.94f)
+                    tts.setVolume((p.getInt("voice_volume",75)/100f).coerceIn(0f,1f))
+                    tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"smart-alert-${System.currentTimeMillis()}")
+                }
+            }
+        }
+    }
+    private fun ttsLocale(tts:TextToSpeech) { try { tts.language=Locale.getDefault() } catch (_:Throwable) {} }
+}
