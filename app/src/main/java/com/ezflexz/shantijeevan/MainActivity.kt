@@ -64,12 +64,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        InstantDetectionState.sync(this)
-        if (::status.isInitialized) refreshStatus()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (prefs.getBoolean("setup_complete", false)) buildHomeScreen() else buildSetupScreen()
@@ -86,9 +80,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        InstantDetectionState.sync(this)
         if (!prefs.getBoolean("setup_complete", false)) {
             if (!settingsScreen) buildSetupScreen()
-        } else if (::status.isInitialized && !settingsScreen) refreshStatus()
+        } else if (::status.isInitialized && !settingsScreen) {
+            refreshStatus()
+        }
     }
 
     private fun setupStep(page: LinearLayout, icon: String, title: String, detail: String, done: Boolean, button: String, action: () -> Unit) {
