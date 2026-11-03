@@ -63,7 +63,7 @@ class SmartAlertsActivity : ComponentActivity() {
             val parts = entry.split("|", limit=2); val number = parts.getOrElse(0){""}; val name = parts.getOrElse(1){number}
             val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(12,12,12,12); setBackgroundColor(0xFFFFFFFF.toInt()) }
             row.addView(TextView(this).apply { text = "$name\n$number"; textSize = 14f; setTextColor(0xFF202522.toInt()) })
-            row.addView(Button(this).apply { text = "Contact sound: ${p.getString("tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name) } })
+            row.addView(Button(this).apply { text = "Call ringtone: ${p.getString("call_tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name,true) } })\n            row.addView(Button(this).apply { text = "Message tone: ${p.getString("message_tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name,false) } })
             row.addView(Button(this).apply { text = "Remove"; setOnClickListener { val s=(p.getStringSet("contacts", emptySet()) ?: emptySet()).toMutableSet(); s.remove(entry); p.edit().putStringSet("contacts",s).apply(); render() } })
             page.addView(row)
         }
@@ -106,9 +106,9 @@ class SmartAlertsActivity : ComponentActivity() {
         render()
     }
 
-    private fun chooseTone(number:String,name:String) {
+    private fun chooseTone(number:String,name:String,isCall:Boolean) {
         val tones=arrayOf("Default","Soft Bell","Warm Chime","Quiet Pulse")
-        val current=p.getString("tone_$number","Default")
+        val key=(if(isCall) "call_tone_" else "message_tone_")+number\n        val current=p.getString(key,"Default")
         android.app.AlertDialog.Builder(this).setTitle("$name sound").setSingleChoiceItems(tones,tones.indexOf(current).coerceAtLeast(0)) { d,which ->
             p.edit().putString("tone_$number",tones[which]).apply()
             SmartAlertSound.preview(this,which); d.dismiss(); render()
