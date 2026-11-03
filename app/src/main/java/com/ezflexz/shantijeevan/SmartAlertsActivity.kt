@@ -86,7 +86,7 @@ class SmartAlertsActivity : ComponentActivity() {
     }
 
     private fun requestNeededPermissions() {
-        val missing = arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.READ_PHONE_STATE, Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+        val missing = arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.RECEIVE_SMS)
             .filter { ContextCompat.checkSelfPermission(this,it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
     }
