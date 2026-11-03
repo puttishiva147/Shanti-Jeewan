@@ -54,8 +54,8 @@ object SmartAlertEngine {
                 if(status==TextToSpeech.SUCCESS) {
                     ttsLocale(tts)
                     tts.setSpeechRate(0.94f)
-                    tts.setVolume((p.getInt("voice_volume",75)/100f).coerceIn(0f,1f))
-                    tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"smart-alert-${System.currentTimeMillis()}")
+                    val params=android.os.Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME,(p.getInt("voice_volume",75)/100f).coerceIn(0f,1f)) }
+                    tts.speak(text,TextToSpeech.QUEUE_FLUSH,params,"smart-alert-${System.currentTimeMillis()}")
                 }
             }
         }
