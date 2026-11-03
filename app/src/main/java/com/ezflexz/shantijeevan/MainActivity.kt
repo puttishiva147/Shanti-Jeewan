@@ -222,7 +222,7 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(this, FocusReminderActivity::class.java))
         }, full().apply { topMargin = dp(22) })
 
-        page.addView(actionButton("SETTINGS") { buildSettingsScreen() },
+        page.addView(actionButton("SMART CONTACT & WHATSAPP ALERTS") {\n            startActivity(Intent(this, SmartAlertsActivity::class.java))\n        }, full().apply { topMargin = dp(12) })\n\n        page.addView(actionButton("SETTINGS") { buildSettingsScreen() },
             full().apply { topMargin = dp(22) })
         page.addView(TextView(this).apply {
             text = "Your phone becomes silent when you arrive home."
