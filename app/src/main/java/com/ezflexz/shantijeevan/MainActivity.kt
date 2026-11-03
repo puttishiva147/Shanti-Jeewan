@@ -64,6 +64,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        InstantDetectionState.sync(this)
+        if (::status.isInitialized) refreshStatus()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (prefs.getBoolean("setup_complete", false)) buildHomeScreen() else buildSetupScreen()
