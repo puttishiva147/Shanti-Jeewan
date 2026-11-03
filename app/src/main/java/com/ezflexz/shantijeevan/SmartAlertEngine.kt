@@ -50,8 +50,8 @@ object SmartAlertEngine {
             val text=if(message.isBlank()) "Incoming call from $name" else "$name says: $message"
             val engineRef=arrayOfNulls<TextToSpeech>(1)
             engineRef[0]=TextToSpeech(context) { status ->
-                val tts=engineRef[0] ?: return@TextToSpeech
-                if(status==TextToSpeech.SUCCESS) {
+                val tts=engineRef[0]
+                if(status==TextToSpeech.SUCCESS && tts!=null) {
                     ttsLocale(tts)
                     tts.setSpeechRate(0.94f)
                     val params=android.os.Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME,(p.getInt("voice_volume",75)/100f).coerceIn(0f,1f)) }
