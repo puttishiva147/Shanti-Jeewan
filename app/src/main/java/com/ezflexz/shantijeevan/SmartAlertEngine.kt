@@ -27,11 +27,25 @@ object SmartAlertEngine {
             if(match) name else null
         }
     }
+    private fun tonePreset(context:Context, identity:String, ringtone:Boolean):Int {
+        val p=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE)
+        val entries=p.getStringSet("contacts",emptySet()) ?: emptySet()
+        val digits=identity.filter { it.isDigit() }
+        val item=entries.firstOrNull { entry ->
+            val number=entry.substringBefore("|").filter { it.isDigit() }
+            if(digits.length>=7) digits.takeLast(10)==number.takeLast(10)
+            else entry.substringAfter("|", "").contains(identity,true)
+        } ?: return 0
+        val number=item.substringBefore("|")
+        val key=(if(ringtone) "call_tone_" else "message_tone_")+number
+        return when(p.getString(key,"Default")) { "Soft Bell"->1; "Warm Chime"->2; "Quiet Pulse"->3; else->0 }
+    }
+
     fun alert(context:Context, identity:String, message:String, read:Boolean, tone:Boolean, ringtone:Boolean=false) {
         if(muted(context)) return
         val name=selectedName(context,identity) ?: return
         val p=context.getSharedPreferences("smart_alerts",Context.MODE_PRIVATE)
-        if(tone) SmartAlertSound.play(context,0,ringtone)
+        if(tone) SmartAlertSound.play(context, tonePreset(context,identity,ringtone),ringtone)
         if(read) {
             val text=if(message.isBlank()) "Incoming call from $name" else "$name says: $message"
             lateinit var tts: TextToSpeech\n            tts=TextToSpeech(context) { status ->
