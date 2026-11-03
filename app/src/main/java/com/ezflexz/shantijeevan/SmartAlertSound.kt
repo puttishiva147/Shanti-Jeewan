@@ -9,7 +9,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 object SmartAlertSound {
-    fun preview(context: Context, preset: Int = 0) { play(context, preset, false) }
+    fun preview(context: Context, preset: Int = 0, ringtone: Boolean = false) { play(context, preset, ringtone) }
     fun play(context: Context, preset: Int = 0, ringtone: Boolean = false) {
         thread(name="smart-alert-tone") {
             val sampleRate=22050
