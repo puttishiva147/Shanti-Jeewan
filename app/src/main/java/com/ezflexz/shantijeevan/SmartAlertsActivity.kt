@@ -63,7 +63,8 @@ class SmartAlertsActivity : ComponentActivity() {
             val parts = entry.split("|", limit=2); val number = parts.getOrElse(0){""}; val name = parts.getOrElse(1){number}
             val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(12,12,12,12); setBackgroundColor(0xFFFFFFFF.toInt()) }
             row.addView(TextView(this).apply { text = "$name\n$number"; textSize = 14f; setTextColor(0xFF202522.toInt()) })
-            row.addView(Button(this).apply { text = "Call ringtone: ${p.getString("call_tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name,true) } })\n            row.addView(Button(this).apply { text = "Message tone: ${p.getString("message_tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name,false) } })
+            row.addView(Button(this).apply { text = "Call ringtone: ${p.getString("call_tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name,true) } })
+            row.addView(Button(this).apply { text = "Message tone: ${p.getString("message_tone_$number","Default")}"; isEnabled = enabled; setOnClickListener { chooseTone(number,name,false) } })
             row.addView(Button(this).apply { text = "Remove"; setOnClickListener { val s=(p.getStringSet("contacts", emptySet()) ?: emptySet()).toMutableSet(); s.remove(entry); p.edit().putStringSet("contacts",s).apply(); render() } })
             page.addView(row)
         }
