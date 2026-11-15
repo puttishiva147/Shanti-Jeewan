@@ -25,3 +25,14 @@ Open in Android Studio, sync Gradle, then run **Build > Build Bundle(s) / APK(s)
 - TTS voice/language depends on the device's installed speech engine.
 - The app does not force maximum volume.
 - This is a personal-use starter implementation. Test home entry/exit, call handling, and restoration on the actual device before relying on it.
+
+---
+
+## Ownership and credits
+
+- **Project owner / creator:** Shiva Putti
+- **GitHub:** [@puttishiva147](https://github.com/puttishiva147)
+- **Repository:** [puttishiva147/Shanti-Jeewan](https://github.com/puttishiva147/Shanti-Jeewan)
+- **Documentation reviewed:** 15 November 2026
+
+Repository creation time and latest source update are maintained by GitHub repository metadata and commit history. The documentation review date above is not a substitute for either timestamp. Third-party libraries, APIs, trademarks and platform components retain their respective owners' rights and licence terms.
