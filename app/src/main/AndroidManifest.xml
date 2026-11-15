@@ -36,7 +36,7 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE"/>
             </intent-filter>
         </service>
-        <receiver android:name=".LocationModeReceiver" android:enabled="true" android:exported="true">
+        <receiver android:name=".LocationModeReceiver" android:enabled="true" android:exported="false">
             <intent-filter><action android:name="android.location.MODE_CHANGED"/></intent-filter>
         </receiver>
     </application>
